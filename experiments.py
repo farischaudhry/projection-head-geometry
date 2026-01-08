@@ -5,7 +5,6 @@ import torch.optim as optim
 import torchvision
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
-import matplotlib.pyplot as plt
 import numpy as np
 import random
 import argparse
@@ -35,27 +34,6 @@ logger = logging.getLogger(__name__)
 logger.info(f'Logging to {log_file}')
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# Plotting style
-plt.rcParams.update({
-        'text.usetex': False,
-        'font.family': 'serif',
-        'font.size': 12,
-        'axes.labelsize': 14,
-        'axes.titlesize': 16,
-        'xtick.labelsize': 11,
-        'ytick.labelsize': 11,
-        'legend.fontsize': 11,
-        'figure.figsize': (10, 6.18),
-        'axes.grid': True,
-        'grid.alpha': 0.3,
-        'lines.linewidth': 2.5,
-        'axes.facecolor': '#FAFAFA',
-        'figure.facecolor': 'white',
-        'axes.edgecolor': '#333333',
-        'axes.linewidth': 1.5,
-        'grid.linewidth': 0.8,
-    })
 
 
 def set_seed(seed: int = 0):
@@ -294,7 +272,7 @@ def run_collapse_experiment(
     }
 
 # =================================
-# Experiment 2a: Guillotine Effect (Linear Probing)
+# Experiment 2a: Guillotine Effect
 # Experiment 2b: Manifold Curvature
 # =================================
 
@@ -594,7 +572,6 @@ if __name__ == '__main__':
     DS = config.dataset
     
     # Log configuration
-    logger.info('')
     logger.info('Configuration:')
     logger.info(f'  Dataset: {config.dataset}')
     logger.info(f'  Batch size: {config.batch_size}')
@@ -603,13 +580,11 @@ if __name__ == '__main__':
     logger.info(f'  Guillotine epochs: {config.num_epochs_guillotine}')
     logger.info(f'  Probe epochs: {config.exp2_probe_epochs}')
     logger.info(f'  Learning rates: collapse={config.lr_collapse}, guillotine={config.lr_guillotine}')
-    logger.info('')
     
     # Create results directory structure
     results_dir = f'results/{DS}'
     os.makedirs(results_dir, exist_ok=True)
     logger.info(f'Results directory: {results_dir}/')
-    logger.info('')
 
     # Track total runtime
     start_time = time.time()
@@ -633,38 +608,7 @@ if __name__ == '__main__':
     np.save(f'{results_dir}/collapse_results.npy', results_exp1)
     logger.info(f'Saved collapse data to {results_dir}/collapse_results.npy')
 
-    # Plotting Exp 1
-    plt.figure(figsize=(10, 6.18))
-    
-    colors = {'linear': '#1f77b4', 'relu': '#ff7f0e', 'gelu': '#2ca02c', 'swish': '#d62728'}
-    styles = {'linear': '--', 'relu': '-', 'gelu': ':', 'swish': '-.'}
-    
-    for activation in activations:
-        if activation in results_exp1:
-            epochs = range(len(results_exp1[activation]['mean']))
-            plt.plot(epochs, results_exp1[activation]['mean'], 
-                    label=f'{activation.upper()}', 
-                    linestyle=styles.get(activation, '-'),
-                    color=colors.get(activation),
-                    linewidth=2)
-            plt.fill_between(epochs, 
-                           results_exp1[activation]['mean'] - results_exp1[activation]['std'],
-                           results_exp1[activation]['mean'] + results_exp1[activation]['std'], 
-                           alpha=0.2,
-                           color=colors.get(activation))
-    
-    plt.title(f'Collapse Instability ({DS.upper()})', fontsize=12, fontweight='bold')
-    plt.xlabel('Training Epochs', fontsize=11)
-    plt.ylabel('Representation Std. Dev.', fontsize=11)
-    plt.legend(frameon=True, shadow=True)
-    plt.grid(alpha=0.3, linestyle=':')
-    
-    plt.tight_layout()
-    plt.savefig(f'{results_dir}/fig1_collapse_instability.png', dpi=300, bbox_inches='tight')
-    logger.info(f'Saved plot to {results_dir}/fig1_collapse_instability.png')
-
     # Experiment 2a: Guillotine Effect
-    logger.info('')
     logger.info('='*60)
     logger.info(f'EXPERIMENT 2a: Guillotine Effect ({DS.upper()})')
     logger.info('='*60)
@@ -705,7 +649,6 @@ if __name__ == '__main__':
     # Experiment 2b: Manifold Curvature
     # Creates combined figure with probing (left) and curvature (right)
     if backbone_pretrained is not None and head_pretrained is not None:
-        logger.info('')
         logger.info('='*60)
         logger.info(f'EXPERIMENT 2b: Manifold Curvature ({DS.upper()})')
         logger.info('='*60)
@@ -766,71 +709,6 @@ if __name__ == '__main__':
                 'dataset': DS
             })
             logger.info(f'Saved curvature data to {results_dir}/curvature_results.npy')
-            
-            # Create combined figure: Probing (left) + Curvature (right)
-            plt.figure(figsize=(14, 6.18))
-            
-            # Left subplot: Probing results (from Exp 2)
-            plt.subplot(1, 2, 1)
-            x_bar = np.arange(2)
-            width = 0.35
-            
-            bars1 = plt.bar(x_bar - width/2, [acc_z_linear, acc_h_linear], width,
-                           label='Linear Probe', color='#1f77b4', edgecolor='black', linewidth=1.5)
-            bars2 = plt.bar(x_bar + width/2, [acc_z_mlp, acc_h_mlp], width,
-                           label='MLP Probe', color='#ff7f0e', edgecolor='black', linewidth=1.5)
-            
-            plt.ylabel('Rotation Accuracy', fontsize=11)
-            plt.title(f'Linear Probing Loss ({DS.upper()})', fontsize=12, fontweight='bold')
-            plt.xticks(x_bar, ['Backbone (z)', 'Head (h(z))'])
-            plt.ylim(0, 1.0)
-            plt.axhline(0.25, color='gray', linestyle='--', alpha=0.5, linewidth=1)
-            plt.legend(frameon=True, shadow=True)
-            plt.grid(alpha=0.3, axis='y', linestyle=':')
-            
-            for bars in [bars1, bars2]:
-                for bar in bars:
-                    height = bar.get_height()
-                    plt.text(bar.get_x() + bar.get_width()/2., height,
-                            f'{height:.3f}', ha='center', va='bottom', fontsize=9)
-            
-            # Right subplot: Curvature results  
-            plt.subplot(1, 2, 2)
-            x = np.arange(2)
-            width = 0.5
-            
-            bars = plt.bar(x, [mean_curv_z_overall, mean_curv_h_overall], width,
-                          yerr=[std_curv_z_overall, std_curv_h_overall],
-                          color=['#1f77b4', '#d62728'],
-                          edgecolor='black',
-                          linewidth=1.5,
-                          capsize=10,
-                          error_kw={'linewidth': 2, 'ecolor': 'black'})
-            
-            plt.ylabel('Local Curvature', fontsize=11)
-            plt.title(f'Manifold Curvature ({DS.upper()}, {config.num_seeds} seeds)',
-                     fontsize=12, fontweight='bold')
-            plt.xticks(x, ['Backbone (z)', 'Head (h(z))'])
-            plt.grid(alpha=0.3, axis='y', linestyle=':')
-            
-            # Add value labels on bars with proper newlines
-            for i, bar in enumerate(bars):
-                height = bar.get_height()
-                std_val = [std_curv_z_overall, std_curv_h_overall][i]
-                plt.text(bar.get_x() + bar.get_width()/2., height,
-                        f'{height:.4f}' + '\n' + f'±{std_val:.4f}',
-                        ha='center', va='bottom', fontsize=10, fontweight='bold')
-            
-            # Add text box with curvature ratio
-            textstr = f'Curvature Ratio:' + '\n' + f'{mean_ratio:.2f}x ± {std_ratio:.2f}x'
-            props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-            plt.text(0.95, 0.95, textstr, transform=plt.gca().transAxes, fontsize=11,
-                    verticalalignment='top', horizontalalignment='right', bbox=props,
-                    fontweight='bold')
-            
-            plt.tight_layout()
-            plt.savefig(f'{results_dir}/fig2_geometric_mechanisms.png', dpi=300, bbox_inches='tight')
-            logger.info(f'Saved combined plot to {results_dir}/fig2_geometric_mechanisms.png')
         except Exception as e:
             logger.info(f'Error in Curvature experiment: {e}')
     else:
@@ -838,11 +716,12 @@ if __name__ == '__main__':
     
     # Final summary
     total_time = time.time() - start_time
-    logger.info('')
     logger.info('='*60)
     logger.info('EXPERIMENTS COMPLETED')
     logger.info('='*60)
     logger.info(f'Total runtime: {total_time/60:.2f} minutes ({total_time:.1f} seconds)')
     logger.info(f'Results saved to: {results_dir}/')
     logger.info(f'Log file: {log_file}')
+    logger.info('To generate figures, run:')
+    logger.info(f'  python plot_results.py --dataset {DS}')
     logger.info('='*60)

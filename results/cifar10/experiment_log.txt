@@ -1,0 +1,81 @@
+14:13:58 - INFO - Logging to logs/20260108_141358.log
+14:13:59 - INFO - ============================================================
+14:13:59 - INFO - Starting Projection Head Geometry Experiments
+14:13:59 - INFO - ============================================================
+14:13:59 - INFO - Device: cuda
+14:13:59 - INFO - PyTorch version: 2.9.1+cu128
+14:13:59 - INFO - 
+14:13:59 - INFO - Configuration:
+14:13:59 - INFO -   Dataset: cifar10
+14:13:59 - INFO -   Batch size: 512
+14:13:59 - INFO -   Num seeds: 3
+14:13:59 - INFO -   Collapse epochs: 20
+14:13:59 - INFO -   Guillotine epochs: 50
+14:13:59 - INFO -   Probe epochs: 5
+14:13:59 - INFO -   Learning rates: collapse=0.05, guillotine=0.001
+14:13:59 - INFO - 
+14:13:59 - INFO - Results directory: results/cifar10/
+14:13:59 - INFO - 
+14:13:59 - INFO - ============================================================
+14:13:59 - INFO - EXPERIMENT 1: Collapse Dynamics (CIFAR10)
+14:13:59 - INFO - ============================================================
+14:14:03 - INFO - [cifar10] Exp 1: linear head (Seed 0)
+15:04:42 - INFO - [cifar10] Exp 1: linear head (Seed 1)
+15:22:22 - INFO - [cifar10] Exp 1: linear head (Seed 2)
+15:40:19 - INFO - [cifar10] Exp 1: relu head (Seed 0)
+15:58:12 - INFO - [cifar10] Exp 1: relu head (Seed 1)
+16:16:07 - INFO - [cifar10] Exp 1: relu head (Seed 2)
+16:34:11 - INFO - [cifar10] Exp 1: gelu head (Seed 0)
+16:52:16 - INFO - [cifar10] Exp 1: gelu head (Seed 1)
+17:10:22 - INFO - [cifar10] Exp 1: gelu head (Seed 2)
+17:28:21 - INFO - [cifar10] Exp 1: swish head (Seed 0)
+17:45:25 - INFO - [cifar10] Exp 1: swish head (Seed 1)
+18:02:46 - INFO - [cifar10] Exp 1: swish head (Seed 2)
+18:20:10 - INFO - Saved collapse data to results/cifar10/collapse_results.npy
+18:20:11 - INFO - Saved plot to results/cifar10/fig1_collapse_instability.png
+18:20:11 - INFO - 
+18:20:11 - INFO - ============================================================
+18:20:11 - INFO - EXPERIMENT 2a: Guillotine Effect (CIFAR10)
+18:20:11 - INFO - ============================================================
+18:20:14 - INFO - [cifar10] Exp 2a: Pre-training SimCLR (50 Epochs)
+19:04:00 - INFO - [cifar10] Training Rotation Probes
+19:04:53 - INFO - Saved guillotine data to results/cifar10/guillotine_results.npy
+19:04:53 - INFO - Final Results (CIFAR10):
+19:04:53 - INFO -   Backbone - Linear Probe: 0.5227
+19:04:53 - INFO -   Backbone - MLP Probe:    0.5546 (Gap: +0.0319)
+19:04:53 - INFO -   Head - Linear Probe:     0.3755
+19:04:53 - INFO -   Head - MLP Probe:        0.4356 (Gap: +0.0601)
+19:04:53 - INFO -   Linear Loss (Guillotine): 0.1472
+19:04:53 - INFO -   Nonlinearity Gap (Head vs Backbone): 0.0282
+19:04:53 - INFO - 
+19:04:53 - INFO - ============================================================
+19:04:53 - INFO - EXPERIMENT 2b: Manifold Curvature (CIFAR10)
+19:04:53 - INFO - ============================================================
+19:04:53 - INFO - Running with 3 seeds for confidence intervals
+19:04:53 - INFO -   Seed 1/3
+19:04:58 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
+19:04:58 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
+19:05:08 - INFO -     Backbone: 0.124117, Head: 0.240222, Ratio: 1.94x
+19:05:08 - INFO -   Seed 2/3
+19:05:10 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
+19:05:10 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
+19:05:20 - INFO -     Backbone: 0.128678, Head: 0.248455, Ratio: 1.93x
+19:05:20 - INFO -   Seed 3/3
+19:05:22 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
+19:05:22 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
+19:05:33 - INFO -     Backbone: 0.123348, Head: 0.238339, Ratio: 1.93x
+19:05:33 - INFO - 
+19:05:33 - INFO - Final Results (Manifold Curvature - 3 seeds):
+19:05:33 - INFO -   Backbone Curvature: 0.125381 ± 0.002353
+19:05:33 - INFO -   Head Curvature:     0.242339 ± 0.004392
+19:05:33 - INFO -   Curvature Ratio:    1.93x ± 0.00x
+19:05:33 - INFO - Saved curvature data to results/cifar10/curvature_results.npy
+19:05:33 - INFO - Saved combined plot to results/cifar10/fig2_geometric_mechanisms.png
+19:05:33 - INFO - 
+19:05:33 - INFO - ============================================================
+19:05:33 - INFO - EXPERIMENTS COMPLETED
+19:05:33 - INFO - ============================================================
+19:05:33 - INFO - Total runtime: 291.58 minutes (17494.6 seconds)
+19:05:33 - INFO - Results saved to: results/cifar10/
+19:05:33 - INFO - Log file: logs/20260108_141358.log
+19:05:33 - INFO - ============================================================
