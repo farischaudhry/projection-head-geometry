@@ -72,10 +72,24 @@
 19:05:33 - INFO - Saved curvature data to results/cifar10/curvature_results.npy
 19:05:33 - INFO - Saved combined plot to results/cifar10/fig2_geometric_mechanisms.png
 19:05:33 - INFO - 
-19:05:33 - INFO - ============================================================
-19:05:33 - INFO - EXPERIMENTS COMPLETED
-19:05:33 - INFO - ============================================================
-19:05:33 - INFO - Total runtime: 291.58 minutes (17494.6 seconds)
-19:05:33 - INFO - Results saved to: results/cifar10/
-19:05:33 - INFO - Log file: logs/20260108_141358.log
-19:05:33 - INFO - ============================================================
+19:05:36 - INFO - ============================================================
+19:05:36 - INFO - EXPERIMENT 2c: Orbit Visualization (CIFAR10)
+19:05:36 - INFO - ============================================================
+19:05:36 - INFO - [cifar10] Orbit Visualization: Collecting data for 5 classes
+19:05:36 - INFO -   Selected classes: ['airplane', 'bird', 'deer', 'frog', 'truck']
+19:05:36 - INFO -   Images per class: 3
+19:05:36 - INFO -   Rotations per image: 12 (0-360°)
+19:05:37 - INFO -   Collected 180 total representations
+19:05:37 - INFO -   Backbone shape: (180, 512)
+19:05:37 - INFO -   Head shape: (180, 2048)
+19:05:37 - INFO - Saved orbit data to results/cifar10/orbit_visualization.npy
+19:05:37 - INFO - Total orbits: 15
+19:05:37 - INFO - Total points: 180
+19:05:37 - INFO - 
+19:05:38 - INFO - ============================================================
+19:05:38 - INFO - EXPERIMENTS COMPLETED
+19:05:38 - INFO - ============================================================
+19:05:38 - INFO - Total runtime: 291.66 minutes (17499.6 seconds)
+19:05:38 - INFO - Results saved to: results/cifar10/
+19:05:38 - INFO - Log file: logs/20260108_141358.log
+19:05:38 - INFO - ============================================================

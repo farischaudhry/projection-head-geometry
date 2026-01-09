@@ -274,6 +274,7 @@ def run_collapse_experiment(
 # =================================
 # Experiment 2a: Guillotine Effect
 # Experiment 2b: Manifold Curvature
+# Experiment 2c: Orbit Visualization
 # =================================
 
 class RotationDataset(Dataset):
@@ -544,6 +545,124 @@ def run_curvature_experiment(
     return np.array(curvatures_z), np.array(curvatures_h)
 
 
+def run_orbit_visualization_experiment(
+    dataset_name: str,
+    backbone: nn.Module,
+    head: nn.Module,
+    config: ExperimentConfig,
+    num_classes: int = 5,
+    images_per_class: int = 3,
+    num_rotations: int = 12
+) -> dict:
+    """
+    Collect augmentation orbit data for visualization of metric singularity.
+    
+    For each class, we sample a few images and apply multiple rotations,
+    collecting both backbone and head representations. This visualizes how
+    the projection head collapses augmentation orbits (Proposition 5.1).
+    
+    Args:
+        dataset_name: Name of dataset
+        backbone: Pretrained backbone model
+        head: Pretrained projection head
+        config: Experiment configuration
+        num_classes: Number of CIFAR classes to visualize
+        images_per_class: Number of images per class
+        num_rotations: Number of rotation steps (0-360 degrees)
+        
+    Returns:
+        Dictionary containing orbit data for backbone and head
+    """
+    backbone.eval()
+    head.eval()
+    
+    # Load test dataset without transforms
+    ds = get_dataset(dataset_name, train=False, transform=transforms.ToTensor())
+    
+    # Select specific classes (evenly distributed)
+    if dataset_name == 'cifar10':
+        all_classes = list(range(10))
+        class_names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 
+                      'dog', 'frog', 'horse', 'ship', 'truck']
+    else:
+        all_classes = list(range(100))
+        class_names = [f'Class_{i}' for i in range(100)]
+    
+    # Select evenly spaced classes
+    selected_classes = [all_classes[i] for i in np.linspace(0, len(all_classes)-1, num_classes, dtype=int)]
+    
+    logger.info(f'[{dataset_name}] Orbit Visualization: Collecting data for {num_classes} classes')
+    logger.info(f'  Selected classes: {[class_names[c] for c in selected_classes]}')
+    logger.info(f'  Images per class: {images_per_class}')
+    logger.info(f'  Rotations per image: {num_rotations} (0-360°)')
+    
+    # Rotation angles
+    angles = np.linspace(0, 360, num_rotations, endpoint=False)
+    
+    # Storage for orbit data
+    orbits_z = []  # Backbone representations
+    orbits_h = []  # Head representations
+    orbit_labels = []  # Class labels
+    orbit_ids = []  # Unique orbit ID for each image
+    orbit_angles = []  # Rotation angles
+    
+    # Collect data for each class
+    orbit_id = 0
+    with torch.no_grad():
+        for class_idx in tqdm(selected_classes, desc='Collecting Orbits'):
+            # Find images for this class
+            class_images = [(img, lbl) for img, lbl in ds if lbl == class_idx]
+            
+            # Sample random images
+            sampled_images = random.sample(class_images, min(images_per_class, len(class_images)))
+            
+            for img, lbl in sampled_images:
+                img_tensor = img.unsqueeze(0).to(device)
+                
+                # Collect representations at different rotations
+                for angle in angles:
+                    # Apply rotation
+                    img_rot = transforms.functional.rotate(img_tensor, float(angle))
+                    
+                    # Get representations
+                    z = F.normalize(backbone(img_rot), dim=1)
+                    h = F.normalize(head(z), dim=1)
+                    
+                    # Store
+                    orbits_z.append(z.cpu().numpy().flatten())
+                    orbits_h.append(h.cpu().numpy().flatten())
+                    orbit_labels.append(class_idx)
+                    orbit_ids.append(orbit_id)
+                    orbit_angles.append(angle)
+                
+                orbit_id += 1
+    
+    # Convert to numpy arrays
+    orbits_z = np.array(orbits_z)
+    orbits_h = np.array(orbits_h)
+    orbit_labels = np.array(orbit_labels)
+    orbit_ids = np.array(orbit_ids)
+    orbit_angles = np.array(orbit_angles)
+    
+    logger.info(f'  Collected {len(orbits_z)} total representations')
+    logger.info(f'  Backbone shape: {orbits_z.shape}')
+    logger.info(f'  Head shape: {orbits_h.shape}')
+    
+    return {
+        'orbits_z': orbits_z,
+        'orbits_h': orbits_h,
+        'orbit_labels': orbit_labels,
+        'orbit_ids': orbit_ids,
+        'orbit_angles': orbit_angles,
+        'selected_classes': selected_classes,
+        'class_names': [class_names[c] for c in selected_classes],
+        'num_rotations': num_rotations,
+        'num_classes': num_classes,
+        'images_per_class': images_per_class,
+        'dataset': dataset_name
+    }
+
+
 # =================================
 # Main Execution
 # =================================
@@ -647,7 +766,6 @@ if __name__ == '__main__':
         head_pretrained = None
     
     # Experiment 2b: Manifold Curvature
-    # Creates combined figure with probing (left) and curvature (right)
     if backbone_pretrained is not None and head_pretrained is not None:
         logger.info('='*60)
         logger.info(f'EXPERIMENT 2b: Manifold Curvature ({DS.upper()})')
@@ -713,6 +831,28 @@ if __name__ == '__main__':
             logger.info(f'Error in Curvature experiment: {e}')
     else:
         logger.info('Skipping Experiment 2b: No pretrained models available')
+    
+    # Experiment 2c: Orbit Visualization
+    if backbone_pretrained is not None and head_pretrained is not None:
+        logger.info('='*60)
+        logger.info(f'EXPERIMENT 2c: Orbit Visualization ({DS.upper()})')
+        logger.info('='*60)
+        
+        try:
+            orbit_data = run_orbit_visualization_experiment(
+                DS, backbone_pretrained, head_pretrained, config,
+                num_classes=5, images_per_class=3, num_rotations=12
+            )
+            
+            # Save orbit data
+            np.save(f'{results_dir}/orbit_visualization.npy', orbit_data)
+            logger.info(f'Saved orbit data to {results_dir}/orbit_visualization.npy')
+            logger.info(f'Total orbits: {orbit_data["orbit_ids"].max() + 1}')
+            logger.info(f'Total points: {len(orbit_data["orbits_z"])}')
+        except Exception as e:
+            logger.info(f'Error in Orbit Visualization experiment: {e}')
+    else:
+        logger.info('Skipping Experiment 2c: No pretrained models available')
     
     # Final summary
     total_time = time.time() - start_time
