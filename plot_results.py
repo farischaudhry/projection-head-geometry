@@ -30,7 +30,7 @@ plt.rcParams.update({
 })
 
 
-def plot_collapse_instability(results_dir, dataset):
+def plot_collapse_instability(results_dir, dataset, architecture):
     """Plot Experiment 1: Collapse Instability."""
     # Load results
     results = np.load(f'{results_dir}/collapse_results.npy', allow_pickle=True).item()
@@ -40,7 +40,7 @@ def plot_collapse_instability(results_dir, dataset):
     colors = {'linear': '#1f77b4', 'relu': '#ff7f0e', 'gelu': '#2ca02c', 'swish': '#d62728'}
     styles = {'linear': '--', 'relu': '-', 'gelu': ':', 'swish': '-.'}
     activations = ['linear', 'relu', 'gelu', 'swish']
-    
+
     for activation in activations:
         if activation in results:
             epochs = range(len(results[activation]['mean']))
@@ -55,7 +55,7 @@ def plot_collapse_instability(results_dir, dataset):
                            alpha=0.2,
                            color=colors.get(activation))
     
-    plt.title(f'Collapse Instability ({dataset.upper()})', fontsize=12, fontweight='bold')
+    plt.title(f'Collapse Instability ({dataset.upper()}, {architecture})', fontsize=12, fontweight='bold')
     plt.xlabel('Training Epochs', fontsize=11)
     plt.ylabel('Representation Std. Dev.', fontsize=11)
     
@@ -71,7 +71,7 @@ def plot_collapse_instability(results_dir, dataset):
     print(f'Saved: {results_dir}/fig1_collapse_instability.png')
 
 
-def plot_geometric_mechanisms(results_dir, dataset):
+def plot_geometric_mechanisms(results_dir, dataset, architecture):
     """Plot Experiment 2b: Combined Guillotine + Curvature."""
     # Load results
     guillotine = np.load(f'{results_dir}/guillotine_results.npy', allow_pickle=True).item()
@@ -105,7 +105,7 @@ def plot_geometric_mechanisms(results_dir, dataset):
                    label='MLP Probe', color='#ff7f0e', edgecolor='black', linewidth=1.5)
     
     plt.ylabel('Rotation Accuracy', fontsize=11)
-    plt.title(f'Probing Loss ({dataset.upper()})', fontsize=12, fontweight='bold')
+    plt.title(f'Probing Loss ({dataset.upper()}, {architecture})', fontsize=12, fontweight='bold')
     plt.xticks(x_bar, ['Backbone (z)', 'Head (h(z))'])
     plt.ylim(0, 1.0)
     plt.axhline(0.25, color='gray', linestyle='--', alpha=0.5, linewidth=1)
@@ -132,7 +132,7 @@ def plot_geometric_mechanisms(results_dir, dataset):
                   error_kw={'linewidth': 2, 'ecolor': 'black'})
     
     plt.ylabel('Local Curvature', fontsize=11)
-    plt.title(f'Manifold Curvature ({dataset.upper()}, {num_seeds} seeds)',
+    plt.title(f'Manifold Curvature ({dataset.upper()}, {architecture}, {num_seeds} seeds)',
              fontsize=12, fontweight='bold')
     plt.xticks(x, ['Backbone (z)', 'Head (h(z))'])
     plt.grid(alpha=0.3, axis='y', linestyle=':')
@@ -156,7 +156,7 @@ def plot_geometric_mechanisms(results_dir, dataset):
     print(f'Saved: {results_dir}/fig2_geometric_mechanisms.png')
 
 
-def plot_orbit_visualization(results_dir, dataset):
+def plot_orbit_visualization(results_dir, dataset, architecture):
     """Plot Experiment 2c: Orbit Visualization via PCA."""
     # Load orbit data
     orbit_data = np.load(f'{results_dir}/orbit_visualization.npy', allow_pickle=True).item()
@@ -325,7 +325,7 @@ def plot_orbit_visualization(results_dir, dataset):
     fig.legend(handles=legend_elements, loc='lower center', ncol=6, 
               frameon=True, shadow=True, fontsize=10, bbox_to_anchor=(0.5, -0.05))
     
-    plt.suptitle(f'Metric Singularity: Augmentation Orbit Collapse ({dataset.upper()})', 
+    plt.suptitle(f'Metric Singularity: Augmentation Orbit Collapse ({dataset.upper()}, {architecture})', 
                 fontsize=16, fontweight='bold', y=1.02)
     
     plt.tight_layout()
@@ -337,9 +337,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Plot results from saved experiment data')
     parser.add_argument('--dataset', type=str, default='cifar10', choices=['cifar10', 'cifar100'],
                        help='Dataset to plot results for')
+    parser.add_argument('--architecture', type=str, default='resnet18',
+                       choices=['resnet18', 'vit_tiny'],
+                       help='Architecture for collapse plot (resnet18, vit_tiny)')
     args = parser.parse_args()
     
-    results_dir = f'results/{args.dataset}'
+    results_dir = f'results/{args.dataset}/{args.architecture}'
     
     if not os.path.exists(results_dir):
         print(f'Error: Results directory not found: {results_dir}')
@@ -352,21 +355,21 @@ if __name__ == '__main__':
     # Plot Figure 1
     if os.path.exists(f'{results_dir}/collapse_results.npy'):
         print('Creating Figure 1: Collapse Instability')
-        plot_collapse_instability(results_dir, args.dataset)
+        plot_collapse_instability(results_dir, args.dataset, args.architecture)
     else:
         print('Skipping Figure 1: collapse_results.npy not found')
     
     # Plot Figure 2
     if os.path.exists(f'{results_dir}/guillotine_results.npy') and os.path.exists(f'{results_dir}/curvature_results.npy'):
         print('Creating Figure 2: Geometric Mechanisms')
-        plot_geometric_mechanisms(results_dir, args.dataset)
+        plot_geometric_mechanisms(results_dir, args.dataset, args.architecture)
     else:
         print('Skipping Figure 2: Required data files not found')
     
     # Plot Figure 3
     if os.path.exists(f'{results_dir}/orbit_visualization.npy'):
         print('Creating Figure 3: Orbit Visualization')
-        plot_orbit_visualization(results_dir, args.dataset)
+        plot_orbit_visualization(results_dir, args.dataset, args.architecture)
     else:
         print('Skipping Figure 3: orbit_visualization.npy not found')
     

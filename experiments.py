@@ -91,6 +91,73 @@ class ResNetBackbone(nn.Module):
         return h.view(h.shape[0], -1)
 
 
+class VisionTransformerBackbone(nn.Module):
+    """Vision Transformer (ViT-Tiny) backbone adapted for CIFAR."""
+    def __init__(self, output_dim=192):
+        super().__init__()
+        # ViT-Tiny configuration: patch_size=4 for 32x32 images (CIFAR)
+        # This gives 8x8 = 64 patches
+        self.output_dim = output_dim
+        self.patch_size = 4
+        self.num_patches = (32 // self.patch_size) ** 2  # 64 patches
+        self.embed_dim = 192  # ViT-Tiny dimension
+        
+        # Patch embedding
+        self.patch_embed = nn.Conv2d(3, self.embed_dim, 
+                                     kernel_size=self.patch_size, 
+                                     stride=self.patch_size)
+        
+        # Positional embedding
+        self.pos_embed = nn.Parameter(torch.zeros(1, self.num_patches + 1, self.embed_dim))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, self.embed_dim))
+        
+        # Transformer encoder (3 layers for ViT-Tiny)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=self.embed_dim,
+            nhead=3,  # ViT-Tiny uses 3 heads
+            dim_feedforward=768,  # 4x embed_dim
+            dropout=0.0,
+            activation='gelu',
+            batch_first=True,
+            norm_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=3)
+        
+        # Initialize weights
+        nn.init.trunc_normal_(self.pos_embed, std=0.02)
+        nn.init.trunc_normal_(self.cls_token, std=0.02)
+
+    def forward(self, x):
+        B = x.shape[0]
+        
+        # Patch embedding: (B, 3, 32, 32) -> (B, embed_dim, 8, 8) -> (B, 64, embed_dim)
+        x = self.patch_embed(x)
+        x = x.flatten(2).transpose(1, 2)
+        
+        # Add cls token
+        cls_tokens = self.cls_token.expand(B, -1, -1)
+        x = torch.cat([cls_tokens, x], dim=1)
+        
+        # Add positional embedding
+        x = x + self.pos_embed
+        
+        # Transformer encoder
+        x = self.transformer(x)
+        
+        # Return cls token representation
+        return x[:, 0]  # (B, embed_dim)
+
+
+def get_backbone(architecture='resnet18'):
+    """Factory function to get backbone by name."""
+    if architecture == 'resnet18':
+        return ResNetBackbone(output_dim=512)
+    elif architecture == 'vit_tiny':
+        return VisionTransformerBackbone(output_dim=192)
+    else:
+        raise ValueError(f'Unknown architecture: {architecture}')
+
+
 class ProjectionHead(nn.Module):
     """
     Projection head with configurable activation and batch normalization.
@@ -158,7 +225,8 @@ def run_collapse_experiment(
     dataset_name: str, 
     activation_type: str, 
     config: ExperimentConfig,
-    seeds: list[int] = None
+    seeds: list[int] = None,
+    architecture: str = 'resnet18'
 ) -> dict:
     """
     Test collapse instability with different activation functions.
@@ -169,6 +237,7 @@ def run_collapse_experiment(
         activation_type: Type of activation ('linear', 'relu', 'gelu', 'swish')
         config: Experiment configuration
         seeds: List of random seeds
+        architecture: Backbone architecture ('resnet18' or 'vit_tiny')
         
     Returns:
         Dictionary with variance statistics over training
@@ -201,8 +270,9 @@ def run_collapse_experiment(
         )
         
         # Create models
-        backbone = ResNetBackbone().to(device)
+        backbone = get_backbone(architecture).to(device)
         projector = ProjectionHead(
+            input_dim=backbone.output_dim,
             activation=activation_type, 
             use_bn=False
         ).to(device)
@@ -673,6 +743,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=512)
     parser.add_argument('--num_epochs_collapse', type=int, default=20)
     parser.add_argument('--num_epochs_guillotine', type=int, default=50)
+    parser.add_argument('--architecture', type=str, default='resnet18', 
+                        choices=['resnet18', 'vit_tiny'],
+                        help='Backbone architecture for collapse experiment')
     args = parser.parse_args()
     
     logger.info('='*60)
@@ -689,6 +762,7 @@ if __name__ == '__main__':
         num_epochs_guillotine=args.num_epochs_guillotine
     )
     DS = config.dataset
+    ARCH = args.architecture
     
     # Log configuration
     logger.info('Configuration:')
@@ -701,7 +775,7 @@ if __name__ == '__main__':
     logger.info(f'  Learning rates: collapse={config.lr_collapse}, guillotine={config.lr_guillotine}')
     
     # Create results directory structure
-    results_dir = f'results/{DS}'
+    results_dir = f'results/{DS}/{ARCH}'
     os.makedirs(results_dir, exist_ok=True)
     logger.info(f'Results directory: {results_dir}/')
 
@@ -710,15 +784,14 @@ if __name__ == '__main__':
     
     # Experiment 1: Collapse Dynamics
     logger.info('='*60)
-    logger.info(f'EXPERIMENT 1: Collapse Dynamics ({DS.upper()})')
+    logger.info(f'EXPERIMENT 1: Collapse Dynamics ({DS.upper()}, {ARCH})')
     logger.info('='*60)
     
     results_exp1 = {}
     activations = ['linear', 'relu', 'gelu', 'swish']
-    
     for activation in activations:
         try:
-            results_exp1[activation] = run_collapse_experiment(DS, activation, config)
+            results_exp1[activation] = run_collapse_experiment(DS, activation, config, architecture=ARCH)
         except Exception as e:
             logger.info(f'Error with {activation}: {e}')
             continue
@@ -729,7 +802,7 @@ if __name__ == '__main__':
 
     # Experiment 2a: Guillotine Effect
     logger.info('='*60)
-    logger.info(f'EXPERIMENT 2a: Guillotine Effect ({DS.upper()})')
+    logger.info(f'EXPERIMENT 2a: Guillotine Effect ({DS.upper()}, {ARCH})')
     logger.info('='*60)
     
     backbone_pretrained = None
@@ -768,7 +841,7 @@ if __name__ == '__main__':
     # Experiment 2b: Manifold Curvature
     if backbone_pretrained is not None and head_pretrained is not None:
         logger.info('='*60)
-        logger.info(f'EXPERIMENT 2b: Manifold Curvature ({DS.upper()})')
+        logger.info(f'EXPERIMENT 2b: Manifold Curvature ({DS.upper()}, {ARCH})')
         logger.info('='*60)
         logger.info(f'Running with {config.num_seeds} seeds for confidence intervals')
         
@@ -835,7 +908,7 @@ if __name__ == '__main__':
     # Experiment 2c: Orbit Visualization
     if backbone_pretrained is not None and head_pretrained is not None:
         logger.info('='*60)
-        logger.info(f'EXPERIMENT 2c: Orbit Visualization ({DS.upper()})')
+        logger.info(f'EXPERIMENT 2c: Orbit Visualization ({DS.upper()}, {ARCH})')
         logger.info('='*60)
         
         try:
@@ -863,5 +936,5 @@ if __name__ == '__main__':
     logger.info(f'Results saved to: {results_dir}/')
     logger.info(f'Log file: {log_file}')
     logger.info('To generate figures, run:')
-    logger.info(f'  python plot_results.py --dataset {DS}')
+    logger.info(f'  python plot_results.py --dataset {DS} --architecture {ARCH}')
     logger.info('='*60)
