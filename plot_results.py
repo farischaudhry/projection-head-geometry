@@ -9,7 +9,32 @@ import os
 from sklearn.decomposition import PCA
 
 # Plotting style
-plt.rcParams.update({
+def single_plot_style() -> None:
+    """Set Matplotlib style for single plots."""
+    plt.rcParams.update({
+        'text.usetex': False,
+        'font.family': 'serif',
+        'font.size': 28,            
+        'axes.labelsize': 32,       
+        'axes.titlesize': 34,       
+        'xtick.labelsize': 26,      
+        'ytick.labelsize': 26,      
+        'legend.fontsize': 24,      
+        'legend.frameon': True,
+        'figure.figsize': (10, 8),  
+        'axes.grid': True,
+        'grid.alpha': 0.3,
+        'lines.linewidth': 2.5,
+        'axes.facecolor': '#FAFAFA',
+        'figure.facecolor': 'white',
+        'axes.edgecolor': '#333333',
+        'axes.linewidth': 1.5,
+        'grid.linewidth': 0.8,
+    })
+
+
+def double_plot_style() -> None:
+    plt.rcParams.update({
     'text.usetex': False,
     'font.family': 'serif',
     'font.size': 12,
@@ -30,20 +55,31 @@ plt.rcParams.update({
 })
 
 
+ARCHITECTURE_TO_TITLE = {
+    'resnet18': 'ResNet-18',
+    'vit_tiny': 'ViT-Tiny',
+}
+
+
 def plot_collapse_instability(results_dir, dataset, architecture):
     """Plot Experiment 1: Collapse Instability."""
     # Load results
+    single_plot_style()
     results = np.load(f'{results_dir}/collapse_results.npy', allow_pickle=True).item()
     
-    plt.figure(figsize=(10, 6.18))
+    plt.figure()
     
     colors = {'linear': '#1f77b4', 'relu': '#ff7f0e', 'gelu': '#2ca02c', 'swish': '#d62728'}
     styles = {'linear': '--', 'relu': '-', 'gelu': ':', 'swish': '-.'}
     activations = ['linear', 'relu', 'gelu', 'swish']
 
+    max_y_val = 0  # For setting y-axis limit in plot
     for activation in activations:
         if activation in results:
             epochs = range(len(results[activation]['mean']))
+            mean = np.array(results[activation]['mean'])
+            std = np.array(results[activation]['std'])
+            max_y_val = max(max_y_val, np.max(mean + std))
             plt.plot(epochs, results[activation]['mean'], 
                     label=f'{activation.upper()}', 
                     linestyle=styles.get(activation, '-'),
@@ -55,13 +91,15 @@ def plot_collapse_instability(results_dir, dataset, architecture):
                            alpha=0.2,
                            color=colors.get(activation))
     
-    plt.title(f'Collapse Instability ({dataset.upper()}, {architecture})', fontsize=12, fontweight='bold')
-    plt.xlabel('Training Epochs', fontsize=11)
-    plt.ylabel('Representation Std. Dev.', fontsize=11)
+    plt.title(f'Collapse Instability ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
+    plt.xlabel('Training Epochs')
+    plt.ylabel('Repr. Std. Dev.')
     
     # Force integer x-axis ticks
     ax = plt.gca()
+    # ax.set_ylim(0, max_y_val * 1.15) 
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    ax.yaxis.set_major_locator(plt.MaxNLocator(nbins='auto', prune='upper'))
     
     plt.legend(frameon=True, shadow=True)
     plt.grid(alpha=0.3, linestyle=':')
@@ -74,6 +112,7 @@ def plot_collapse_instability(results_dir, dataset, architecture):
 def plot_geometric_mechanisms(results_dir, dataset, architecture):
     """Plot Experiment 2b: Combined Guillotine + Curvature."""
     # Load results
+    double_plot_style()
     guillotine = np.load(f'{results_dir}/guillotine_results.npy', allow_pickle=True).item()
     curvature = np.load(f'{results_dir}/curvature_results.npy', allow_pickle=True).item()
     
@@ -104,8 +143,8 @@ def plot_geometric_mechanisms(results_dir, dataset, architecture):
     bars2 = plt.bar(x_bar + width/2, [acc_z_mlp, acc_h_mlp], width,
                    label='MLP Probe', color='#ff7f0e', edgecolor='black', linewidth=1.5)
     
-    plt.ylabel('Rotation Accuracy', fontsize=11)
-    plt.title(f'Probing Loss ({dataset.upper()}, {architecture})', fontsize=12, fontweight='bold')
+    plt.ylabel('Rotation Accuracy')
+    plt.title(f'Probing Loss ({dataset.upper()}, {architecture})', fontweight='bold')
     plt.xticks(x_bar, ['Backbone (z)', 'Head (h(z))'])
     plt.ylim(0, 1.0)
     plt.axhline(0.25, color='gray', linestyle='--', alpha=0.5, linewidth=1)
@@ -116,7 +155,7 @@ def plot_geometric_mechanisms(results_dir, dataset, architecture):
         for bar in bars:
             height = bar.get_height()
             plt.text(bar.get_x() + bar.get_width()/2., height,
-                    f'{height:.3f}', ha='center', va='bottom', fontsize=9)
+                    f'{height:.3f}', ha='center', va='bottom')
     
     # Right subplot: Curvature results
     plt.subplot(1, 2, 2)
@@ -131,9 +170,8 @@ def plot_geometric_mechanisms(results_dir, dataset, architecture):
                   capsize=10,
                   error_kw={'linewidth': 2, 'ecolor': 'black'})
     
-    plt.ylabel('Local Curvature', fontsize=11)
-    plt.title(f'Manifold Curvature ({dataset.upper()}, {architecture}, {num_seeds} seeds)',
-             fontsize=12, fontweight='bold')
+    plt.ylabel('Local Curvature')
+    plt.title(f'Manifold Curvature ({dataset.upper()}, {architecture}, {num_seeds} seeds)', fontweight='bold')
     plt.xticks(x, ['Backbone (z)', 'Head (h(z))'])
     plt.grid(alpha=0.3, axis='y', linestyle=':')
     
@@ -143,11 +181,11 @@ def plot_geometric_mechanisms(results_dir, dataset, architecture):
         y_pos = height + std_val * 1.15
         plt.text(bar.get_x() + bar.get_width()/2., y_pos,
                 f'{height:.4f} ± {std_val:.4f}',
-                ha='center', va='bottom', fontsize=10, fontweight='bold')
+                ha='center', va='bottom', fontweight='bold')
     
     textstr = f'Curvature Ratio:\n{mean_ratio:.2f}x ± {std_ratio:.2f}x'
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=11,
+    plt.text(0.05, 0.95, textstr, transform=plt.gca().transAxes,
             verticalalignment='top', horizontalalignment='left', bbox=props,
             fontweight='bold')
     
@@ -159,6 +197,7 @@ def plot_geometric_mechanisms(results_dir, dataset, architecture):
 def plot_orbit_visualization(results_dir, dataset, architecture):
     """Plot Experiment 2c: Orbit Visualization via PCA."""
     # Load orbit data
+    double_plot_style()
     orbit_data = np.load(f'{results_dir}/orbit_visualization.npy', allow_pickle=True).item()
     
     orbits_z = orbit_data['orbits_z']
@@ -190,12 +229,16 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
         orbit_variances_z.append(var_z)
         orbit_variances_h.append(var_h)
     
-    mean_var_z = np.mean(orbit_variances_z)
-    mean_var_h = np.mean(orbit_variances_h)
+    ov_z = np.array(orbit_variances_z)
+    ov_h = np.array(orbit_variances_h)
     
-    print(f'Backbone (z) - Mean orbit variance: {mean_var_z:.6f}')
-    print(f'Head (h(z))  - Mean orbit variance: {mean_var_h:.6f}')
-    print(f'Orbit compression ratio: {mean_var_z / (mean_var_h + 1e-10):.2f}x')
+    mean_z, std_z = np.mean(ov_z), np.std(ov_z)
+    mean_h, std_h = np.mean(ov_h), np.std(ov_h)
+    comp_ratio = mean_z / (mean_h + 1e-10)
+    
+    print(f'Backbone (z) - Mean orbit variance: {mean_z:.6f} ± {std_z:.6f}')
+    print(f'Head (h(z))  - Mean orbit variance: {mean_h:.6f} ± {std_h:.6f}')
+    print(f'Orbit compression ratio: {comp_ratio:.2f}x')
     
     # Apply PCA to reduce to 2D for visualization
     print('\n=== PCA PROJECTION (L2-Normalized Representations) ===')
@@ -244,7 +287,7 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
     fig, axes = plt.subplots(1, 2, figsize=(16, 7))
     
     # Calculate compression ratio for use in plot
-    compression_ratio = mean_var_z / (mean_var_h + 1e-10)
+    compression_ratio = mean_z / (mean_h + 1e-10)
     
     # Color palette for classes
     colors = plt.cm.tab10(np.linspace(0, 1, 10))
@@ -270,14 +313,14 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
                   color=class_colors[class_label], s=120, marker='*',
                   edgecolors='black', linewidths=1.5, zorder=3)
     
-    ax.set_title('Backbone Representation Space $z$', fontsize=14, fontweight='bold', pad=15)
-    ax.set_xlabel('PC 1', fontsize=12)
-    ax.set_ylabel('PC 2', fontsize=12)
+    ax.set_title('Backbone Representation Space $z$', fontweight='bold', pad=15)
+    ax.set_xlabel('PC 1')
+    ax.set_ylabel('PC 2')
     ax.grid(True, alpha=0.3, linestyle=':')
     
-    textstr = f'Mean Orbit Spread:\n{mean_var_z:.5f}'
+    textstr = f'Mean Orbit Spread:\n{mean_z:.5f} ± {std_z:.5f}'
     props = dict(boxstyle='round', facecolor='lightblue', alpha=0.8, edgecolor='black', linewidth=2)
-    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=12,
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes,
             verticalalignment='top', bbox=props, fontweight='bold')
     
     # Plot projection head space (right)
@@ -304,15 +347,15 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
                   color=class_colors[class_label], s=150*marker_scale, marker='*',
                   edgecolors='black', linewidths=2.0, zorder=3)
     
-    ax.set_title('Projection Head Space $h(z)$', fontsize=14, fontweight='bold', pad=15)
-    ax.set_xlabel('PC 1', fontsize=12)
-    ax.set_ylabel('PC 2', fontsize=12)
+    ax.set_title('Projection Head Space $h(z)$', fontweight='bold', pad=15)
+    ax.set_xlabel('PC 1')
+    ax.set_ylabel('PC 2')
     ax.grid(True, alpha=0.3, linestyle=':')
     
     # Add orbit variance only
-    textstr = f'Mean Orbit Spread:\n{mean_var_h:.5f}\n({compression_ratio:.1f}× smaller)'
+    textstr = f'Mean Orbit Spread:\n{mean_h:.5f} ± {std_h:.5f}\n({comp_ratio:.1f}× smaller)'
     props = dict(boxstyle='round', facecolor='lightcoral', alpha=0.8, edgecolor='black', linewidth=2)
-    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=12,
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes,
             verticalalignment='top', bbox=props, fontweight='bold')
     
     legend_elements = [Patch(facecolor=class_colors[label], label=class_names[i]) 
@@ -325,8 +368,8 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
     fig.legend(handles=legend_elements, loc='lower center', ncol=6, 
               frameon=True, shadow=True, fontsize=10, bbox_to_anchor=(0.5, -0.05))
     
-    plt.suptitle(f'Metric Singularity: Augmentation Orbit Collapse ({dataset.upper()}, {architecture})', 
-                fontsize=16, fontweight='bold', y=1.02)
+    plt.suptitle(f'Visualization of Augmentation Orbit Collapse ({dataset.upper()}, {architecture})', 
+                fontweight='bold', y=1.02)
     
     plt.tight_layout()
     plt.savefig(f'{results_dir}/fig3_orbit_visualization.png', dpi=300, bbox_inches='tight')
@@ -343,6 +386,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     results_dir = f'results/{args.dataset}/{args.architecture}'
+    architecture_title = ARCHITECTURE_TO_TITLE.get(args.architecture, args.architecture)
     
     if not os.path.exists(results_dir):
         print(f'Error: Results directory not found: {results_dir}')
@@ -355,21 +399,21 @@ if __name__ == '__main__':
     # Plot Figure 1
     if os.path.exists(f'{results_dir}/collapse_results.npy'):
         print('Creating Figure 1: Collapse Instability')
-        plot_collapse_instability(results_dir, args.dataset, args.architecture)
+        plot_collapse_instability(results_dir, args.dataset, architecture_title)
     else:
         print('Skipping Figure 1: collapse_results.npy not found')
     
     # Plot Figure 2
     if os.path.exists(f'{results_dir}/guillotine_results.npy') and os.path.exists(f'{results_dir}/curvature_results.npy'):
         print('Creating Figure 2: Geometric Mechanisms')
-        plot_geometric_mechanisms(results_dir, args.dataset, args.architecture)
+        plot_geometric_mechanisms(results_dir, args.dataset, architecture_title)
     else:
         print('Skipping Figure 2: Required data files not found')
     
     # Plot Figure 3
     if os.path.exists(f'{results_dir}/orbit_visualization.npy'):
         print('Creating Figure 3: Orbit Visualization')
-        plot_orbit_visualization(results_dir, args.dataset, args.architecture)
+        plot_orbit_visualization(results_dir, args.dataset, architecture_title)
     else:
         print('Skipping Figure 3: orbit_visualization.npy not found')
     
