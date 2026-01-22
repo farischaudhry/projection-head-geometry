@@ -299,8 +299,20 @@ def run_collapse_experiment(
                 if isinstance(m, nn.Linear):
                     m.weight.data *= config.collapse_init_scale
         
+        # # Verify collapse initialization
+        # with torch.no_grad():
+        #     sample_batch = next(iter(train_loader))
+        #     x1, x2 = sample_batch[0][0].to(device), sample_batch[0][1].to(device)
+        #     z1 = projector(backbone(x1))
+        #     z1_normalized = F.normalize(z1, dim=1)
+        #     initial_var = torch.var(z1_normalized, dim=0).mean().item()
+        #     if seed == 0:  # Log only for first seed to avoid clutter
+        #         logger.info(f'[{dataset_name}] Pseudo-collapsed init variance: {initial_var:.6f}')
+        #         if initial_var > 1e-2:
+        #             logger.warning(f'WARNING: Initial variance {initial_var:.6f} may be too high for collapse dynamics')
+        
         variance_history = []
-        logger.info(f"[{dataset_name}] Exp 1: {activation_type} head (Seed {seed})")
+        logger.info(f'[{dataset_name}] Exp 1: {activation_type} head (Seed {seed})')
         
         for epoch in tqdm(range(config.num_epochs_collapse), desc=f'{activation_type} (seed {seed})', leave=False): 
             backbone.train()
