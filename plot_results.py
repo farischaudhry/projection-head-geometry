@@ -7,6 +7,7 @@ from matplotlib.patches import Patch
 import argparse
 import os
 from sklearn.decomposition import PCA
+from scipy.spatial.distance import pdist
 
 # Plotting style
 def single_plot_style() -> None:
@@ -194,8 +195,58 @@ def plot_geometric_mechanisms(results_dir, dataset, architecture):
     print(f'Saved: {results_dir}/fig2_geometric_mechanisms.png')
 
 
+def _calculate_geometric_metrics(X, ids, labels):
+    """High-dimensional geometric metrics calculation helper."""
+    # 1. Intra-orbit distance (D_intra)
+    intra_distances = []
+    for oid in np.unique(ids):
+        orbit_points = X[ids == oid]
+        if len(orbit_points) > 1:
+            dists = pdist(orbit_points, metric='euclidean')
+            intra_distances.append(np.mean(dists))
+    
+    d_intra_mean = np.mean(intra_distances)
+    d_intra_std = np.std(intra_distances)
+
+    # 2. Inter-class distance (D_inter)
+    class_centroids = []
+    unique_classes = np.unique(labels)
+    for cls in unique_classes:
+        class_points = X[labels == cls]
+        class_centroids.append(np.mean(class_points, axis=0))
+    
+    class_centroids = np.array(class_centroids)
+    inter_dists = pdist(class_centroids, metric='euclidean')
+    d_inter_mean = np.mean(inter_dists)
+    d_inter_std = np.std(inter_dists)  # Std dev of pairwise centroid distances
+    
+    # 3. Orbit Spread (Variance)
+    variances = []
+    for oid in np.unique(ids):
+        orbit_points = X[ids == oid]
+        centroid = np.mean(orbit_points, axis=0)
+        var = np.mean(np.sum((orbit_points - centroid)**2, axis=1))
+        variances.append(var)
+    
+    spread_mean = np.mean(variances)
+    spread_std = np.std(variances)
+    
+    # Calculate ratio and propagate uncertainty
+    ratio = d_inter_mean / (d_intra_mean + 1e-10)
+    # Error propagation: if R = A/B, then σ_R = R * sqrt((sigma_A/A)^2 + (sigma_B/B)^2)
+    ratio_std = ratio * np.sqrt((d_inter_std / (d_inter_mean + 1e-10))**2 + 
+                                    (d_intra_std / (d_intra_mean + 1e-10))**2)
+    
+    return {
+        'd_intra': (d_intra_mean, d_intra_std),
+        'd_inter': (d_inter_mean, d_inter_std),
+        'spread': (spread_mean, spread_std),
+        'ratio': (ratio, ratio_std)
+    }
+
+
 def plot_orbit_visualization(results_dir, dataset, architecture):
-    """Plot Experiment 2c: Orbit Visualization via PCA."""
+    """Plot Experiment 2c: Orbit Visualization (via PCA) and calculate high-dimensional metrics."""
     # Load orbit data
     double_plot_style()
     orbit_data = np.load(f'{results_dir}/orbit_visualization.npy', allow_pickle=True).item()
@@ -205,44 +256,33 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
     orbit_labels = orbit_data['orbit_labels']
     orbit_ids = orbit_data['orbit_ids']
     class_names = orbit_data['class_names']
-    num_rotations = orbit_data['num_rotations']
     
-    # DIAGNOSTIC: Compute orbit variances in high-dimensional space
-    print('\n=== ORBIT VARIANCE DIAGNOSTICS (High-Dimensional Space) ===')
-    orbit_variances_z = []
-    orbit_variances_h = []
+    metrics_z = _calculate_geometric_metrics(orbits_z, orbit_ids, orbit_labels)
+    metrics_h = _calculate_geometric_metrics(orbits_h, orbit_ids, orbit_labels)
+
+    # Extract values for plotting
+    mean_z, std_z = metrics_z['spread']
+    mean_h, std_h = metrics_h['spread']
+    compression_ratio = mean_z / (mean_h + 1e-10)
+
+    # Print master table
+    print('\n' + '='*60)
+    print(f'High-dimensional Metrics ({dataset.upper()}, {architecture})')
+    print('='*60)
+    print(f"{'Metric':<25} | {'Backbone (z)':<18} | {'Head (h(z))':<18}")
+    print('-'*60)
+    print(f"{'Orbit Spread':<25} | {mean_z:.4f} ± {std_z:.4f} | {mean_h:.4f} ± {std_h:.4f}")
+    print(f"{'Intra-orbit Dist (D_intra)':<25} | {metrics_z['d_intra'][0]:.4f} ± {metrics_z['d_intra'][1]:.4f} | {metrics_h['d_intra'][0]:.4f} ± {metrics_h['d_intra'][1]:.4f}")
+    print(f"{'Inter-class Dist (D_inter)':<25} | {metrics_z['d_inter'][0]:.4f} ± {metrics_z['d_inter'][1]:.4f} | {metrics_h['d_inter'][0]:.4f} ± {metrics_h['d_inter'][1]:.4f}")
+    print(f"{'Class/Orbit Ratio':<25} | {metrics_z['ratio'][0]:.2f}x ± {metrics_z['ratio'][1]:.2f}x | {metrics_h['ratio'][0]:.2f}x ± {metrics_h['ratio'][1]:.2f}x")
+    print('='*60 + '\n')
     
-    for orbit_id in np.unique(orbit_ids):
-        mask = orbit_ids == orbit_id
-        
-        # Compute variance of orbit points
-        orbit_z = orbits_z[mask]
-        orbit_h = orbits_h[mask]
-        
-        # Variance = mean squared distance from centroid
-        centroid_z = orbit_z.mean(axis=0)
-        centroid_h = orbit_h.mean(axis=0)
-        
-        var_z = np.mean(np.sum((orbit_z - centroid_z)**2, axis=1))
-        var_h = np.mean(np.sum((orbit_h - centroid_h)**2, axis=1))
-        
-        orbit_variances_z.append(var_z)
-        orbit_variances_h.append(var_h)
-    
-    ov_z = np.array(orbit_variances_z)
-    ov_h = np.array(orbit_variances_h)
-    
-    mean_z, std_z = np.mean(ov_z), np.std(ov_z)
-    mean_h, std_h = np.mean(ov_h), np.std(ov_h)
-    comp_ratio = mean_z / (mean_h + 1e-10)
-    
-    print(f'Backbone (z) - Mean orbit variance: {mean_z:.6f} ± {std_z:.6f}')
-    print(f'Head (h(z))  - Mean orbit variance: {mean_h:.6f} ± {std_h:.6f}')
-    print(f'Orbit compression ratio: {comp_ratio:.2f}x')
+    print(f'Orbit Compression: {compression_ratio:.2f}x (Head collapses orbits {compression_ratio:.2f}x more than Backbone)')
+    print(f'Separation Improvement: {metrics_z["ratio"][0]:.2f}x → {metrics_h["ratio"][0]:.2f}x ({metrics_h["ratio"][0] / metrics_z["ratio"][0]:.2f}x better)')
+    print('')
     
     # Apply PCA to reduce to 2D for visualization
-    print('\n=== PCA PROJECTION (L2-Normalized Representations) ===')
-    # Normalize to unit sphere before PCA to preserve structure
+    print('=== PCA PROJECTION (L2-Normalized Representations) ===')
     orbits_z_norm = orbits_z / (np.linalg.norm(orbits_z, axis=1, keepdims=True) + 1e-8)
     orbits_h_norm = orbits_h / (np.linalg.norm(orbits_h, axis=1, keepdims=True) + 1e-8)
     
@@ -252,42 +292,11 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
     pca_h = PCA(n_components=2, random_state=42)
     h_2d = pca_h.fit_transform(orbits_h_norm)
     
-    print(f'  Backbone PCA explained variance: {pca_z.explained_variance_ratio_.sum():.3f}')
-    print(f'  Head PCA explained variance: {pca_h.explained_variance_ratio_.sum():.3f}')
-    
-    # DIAGNOSTIC: Compute orbit variances in 2D space
-    print('\n=== ORBIT VARIANCE DIAGNOSTICS (2D PCA Space) ===')
-    orbit_variances_z_2d = []
-    orbit_variances_h_2d = []
-    
-    for orbit_id in np.unique(orbit_ids):
-        mask = orbit_ids == orbit_id
-        
-        orbit_z_2d = z_2d[mask]
-        orbit_h_2d = h_2d[mask]
-        
-        centroid_z_2d = orbit_z_2d.mean(axis=0)
-        centroid_h_2d = orbit_h_2d.mean(axis=0)
-        
-        var_z_2d = np.mean(np.sum((orbit_z_2d - centroid_z_2d)**2, axis=1))
-        var_h_2d = np.mean(np.sum((orbit_h_2d - centroid_h_2d)**2, axis=1))
-        
-        orbit_variances_z_2d.append(var_z_2d)
-        orbit_variances_h_2d.append(var_h_2d)
-    
-    mean_var_z_2d = np.mean(orbit_variances_z_2d)
-    mean_var_h_2d = np.mean(orbit_variances_h_2d)
-    
-    print(f'Backbone (z) - Mean 2D orbit variance: {mean_var_z_2d:.6f}')
-    print(f'Head (h(z))  - Mean 2D orbit variance: {mean_var_h_2d:.6f}')
-    print(f'2D Orbit compression ratio: {mean_var_z_2d / (mean_var_h_2d + 1e-10):.2f}x')
-    print('='*60 + '\n')
+    print(f'Backbone PCA explained variance: {pca_z.explained_variance_ratio_.sum():.3f}')
+    print(f'Head PCA explained variance: {pca_h.explained_variance_ratio_.sum():.3f}\n')
     
     # Create side-by-side visualization
     fig, axes = plt.subplots(1, 2, figsize=(16, 7))
-    
-    # Calculate compression ratio for use in plot
-    compression_ratio = mean_z / (mean_h + 1e-10)
     
     # Color palette for classes
     colors = plt.cm.tab10(np.linspace(0, 1, 10))
@@ -353,7 +362,7 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
     ax.grid(True, alpha=0.3, linestyle=':')
     
     # Add orbit variance only
-    textstr = f'Mean Orbit Spread:\n{mean_h:.5f} ± {std_h:.5f}\n({comp_ratio:.1f}× smaller)'
+    textstr = f'Mean Orbit Spread:\n{mean_h:.5f} ± {std_h:.5f}\n({compression_ratio:.1f}× smaller)'
     props = dict(boxstyle='round', facecolor='lightcoral', alpha=0.8, edgecolor='black', linewidth=2)
     ax.text(0.05, 0.95, textstr, transform=ax.transAxes,
             verticalalignment='top', bbox=props, fontweight='bold')
