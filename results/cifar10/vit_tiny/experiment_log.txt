@@ -29,60 +29,77 @@
 16:08:14 - INFO - [cifar10] Exp 1: swish head (Seed 1)
 16:15:02 - INFO - [cifar10] Exp 1: swish head (Seed 2)
 16:21:47 - INFO - Saved collapse data to results/cifar10/vit_tiny/collapse_results.npy
-16:21:47 - INFO - ============================================================
-16:21:47 - INFO - EXPERIMENT 2a: Guillotine Effect (CIFAR10, vit_tiny)
-16:21:47 - INFO - ============================================================
-16:21:50 - INFO - [cifar10] Exp 2a: Pre-training SimCLR (50 Epochs)
-17:07:22 - INFO - [cifar10] Training Rotation Probes
-17:08:18 - INFO - Saved guillotine data to results/cifar10/vit_tiny/guillotine_results.npy
-17:08:18 - INFO - Final Results (CIFAR10):
-17:08:18 - INFO -   Backbone - Linear Probe: 0.5227
-17:08:18 - INFO -   Backbone - MLP Probe:    0.5546 (Gap: +0.0319)
-17:08:18 - INFO -   Head - Linear Probe:     0.3755
-17:08:18 - INFO -   Head - MLP Probe:        0.4356 (Gap: +0.0601)
-17:08:18 - INFO -   Linear Loss (Guillotine): 0.1472
-17:08:18 - INFO -   Nonlinearity Gap (Head vs Backbone): 0.0282
-17:08:18 - INFO - ============================================================
-17:08:18 - INFO - EXPERIMENT 2b: Manifold Curvature (CIFAR10, vit_tiny)
-17:08:18 - INFO - ============================================================
-17:08:18 - INFO - Running with 3 seeds for confidence intervals
-17:08:18 - INFO -   Seed 1/3
-17:08:20 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
-17:08:20 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
-17:08:28 - INFO -     Backbone: 0.124117, Head: 0.240222, Ratio: 1.94x
-17:08:28 - INFO -   Seed 2/3
-17:08:30 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
-17:08:30 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
-17:08:40 - INFO -     Backbone: 0.128678, Head: 0.248455, Ratio: 1.93x
-17:08:40 - INFO -   Seed 3/3
-17:08:43 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
-17:08:43 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
-17:08:53 - INFO -     Backbone: 0.123348, Head: 0.238339, Ratio: 1.93x
-17:08:53 - INFO - 
-17:08:53 - INFO - Final Results (Manifold Curvature - 3 seeds):
-17:08:53 - INFO -   Backbone Curvature: 0.125381 ± 0.002353
-17:08:53 - INFO -   Head Curvature:     0.242339 ± 0.004392
-17:08:53 - INFO -   Curvature Ratio:    1.93x ± 0.00x
-17:08:53 - INFO - Saved curvature data to results/cifar10/vit_tiny/curvature_results.npy
-17:08:53 - INFO - ============================================================
-17:08:53 - INFO - EXPERIMENT 2c: Orbit Visualization (CIFAR10, vit_tiny)
-17:08:53 - INFO - ============================================================
-17:08:53 - INFO - [cifar10] Orbit Visualization: Collecting data for 5 classes
-17:08:53 - INFO -   Selected classes: ['airplane', 'bird', 'deer', 'frog', 'truck']
-17:08:53 - INFO -   Images per class: 3
-17:08:53 - INFO -   Rotations per image: 12 (0-360°)
-17:08:56 - INFO -   Collected 180 total representations
-17:08:56 - INFO -   Backbone shape: (180, 512)
-17:08:56 - INFO -   Head shape: (180, 2048)
-17:08:56 - INFO - Saved orbit data to results/cifar10/vit_tiny/orbit_visualization.npy
-17:08:56 - INFO - Total orbits: 15
-17:08:56 - INFO - Total points: 180
-17:08:56 - INFO - ============================================================
-17:08:56 - INFO - EXPERIMENTS COMPLETED
-17:08:56 - INFO - ============================================================
-17:08:56 - INFO - Total runtime: 128.62 minutes (7717.1 seconds)
-17:08:56 - INFO - Results saved to: results/cifar10/vit_tiny/
-17:08:56 - INFO - Log file: logs/20260109_150017.log
-17:08:56 - INFO - To generate figures, run:
-17:08:56 - INFO -   python plot_results.py --dataset cifar10 --architecture vit_tiny
-17:08:56 - INFO - ============================================================
+
+
+15:02:56 - INFO - Logging to logs/20260125_150256.log
+15:02:56 - INFO - ============================================================
+15:02:56 - INFO - Starting Projection Head Geometry Experiments
+15:02:56 - INFO - ============================================================
+15:02:56 - INFO - Device: cuda
+15:02:56 - INFO - PyTorch version: 2.9.1+cu128
+15:02:56 - INFO - Configuration:
+15:02:56 - INFO -   Dataset: cifar10
+15:02:56 - INFO -   Batch size: 512
+15:02:56 - INFO -   Num seeds: 3
+15:02:56 - INFO -   Collapse epochs: 20
+15:02:56 - INFO -   Guillotine epochs: 50
+15:02:56 - INFO -   Probe epochs: 5
+15:02:56 - INFO -   Learning rates: collapse=0.05, guillotine=0.001
+15:02:56 - INFO - Results directory: results/cifar10/vit_tiny/
+15:02:56 - INFO - ============================================================
+15:02:56 - INFO - EXPERIMENT 2a: Guillotine Effect (CIFAR10, vit_tiny)
+15:02:56 - INFO - ============================================================
+15:03:03 - INFO - [cifar10] Exp 2a: Pre-training SimCLR (50 Epochs)
+15:23:54 - INFO - [cifar10] Training Rotation Probes
+15:24:28 - INFO - Saved guillotine data to results/cifar10/vit_tiny/guillotine_results.npy
+15:24:28 - INFO - Final Results (CIFAR10):
+15:24:28 - INFO -   Backbone - Linear Probe: 0.4075
+15:24:28 - INFO -   Backbone - MLP Probe:    0.4422 (Gap: +0.0347)
+15:24:28 - INFO -   Head - Linear Probe:     0.3492
+15:24:28 - INFO -   Head - MLP Probe:        0.4087 (Gap: +0.0595)
+15:24:28 - INFO -   Linear Loss (Guillotine): 0.0583
+15:24:28 - INFO -   Nonlinearity Gap (Head vs Backbone): 0.0248
+15:24:28 - INFO - ============================================================
+15:24:28 - INFO - EXPERIMENT 2b: Manifold Curvature (CIFAR10, vit_tiny)
+15:24:28 - INFO - ============================================================
+15:24:28 - INFO - Running with 3 seeds for confidence intervals
+15:24:28 - INFO -   Seed 1/3
+15:24:31 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
+15:24:31 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
+15:24:39 - INFO -     Backbone: 0.122452, Head: 0.316167, Ratio: 2.58x
+15:24:39 - INFO -   Seed 2/3
+15:24:42 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
+15:24:42 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
+15:24:49 - INFO -     Backbone: 0.122799, Head: 0.320362, Ratio: 2.61x
+15:24:49 - INFO -   Seed 3/3
+15:24:49 - INFO - [cifar10] Exp 2b: Estimating Manifold Curvature
+15:24:49 - INFO -   Sweeping rotations: 0° to 45° in 10 steps
+15:24:57 - INFO -     Backbone: 0.122328, Head: 0.314525, Ratio: 2.57x
+15:24:57 - INFO - 
+15:24:57 - INFO - Final Results (Manifold Curvature - 3 seeds):
+15:24:57 - INFO -   Backbone Curvature: 0.122526 ± 0.000200
+15:24:57 - INFO -   Head Curvature:     0.317018 ± 0.002458
+15:24:57 - INFO -   Curvature Ratio:    2.59x ± 0.02x
+15:24:57 - INFO - Saved curvature data to results/cifar10/vit_tiny/curvature_results.npy
+15:24:57 - INFO - ============================================================
+15:24:57 - INFO - EXPERIMENT 2c: Orbit Visualization (CIFAR10, vit_tiny)
+15:24:57 - INFO - ============================================================
+15:24:59 - INFO - [cifar10] Orbit Visualization: Collecting data for 5 classes
+15:24:59 - INFO -   Selected classes: ['airplane', 'bird', 'deer', 'frog', 'truck']
+15:24:59 - INFO -   Images per class: 3
+15:24:59 - INFO -   Rotations per image: 12 (0-360°)
+15:25:02 - INFO -   Collected 180 total representations
+15:25:02 - INFO -   Backbone shape: (180, 192)
+15:25:02 - INFO -   Head shape: (180, 2048)
+15:25:02 - INFO - Saved orbit data to results/cifar10/vit_tiny/orbit_visualization.npy
+15:25:02 - INFO - Total orbits: 15
+15:25:02 - INFO - Total points: 180
+15:25:02 - INFO - ============================================================
+15:25:02 - INFO - EXPERIMENTS COMPLETED
+15:25:02 - INFO - ============================================================
+15:25:02 - INFO - Total runtime: 22.10 minutes (1326.2 seconds)
+15:25:02 - INFO - Results saved to: results/cifar10/vit_tiny/
+15:25:02 - INFO - Log file: logs/20260125_150256.log
+15:25:02 - INFO - To generate figures, run:
+15:25:02 - INFO -   python plot_results.py --dataset cifar10 --architecture vit_tiny
+15:25:02 - INFO - ============================================================

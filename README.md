@@ -20,12 +20,14 @@ projection-head-geometry/
 ├── experiments.py              # Main experiment runner
 ├── plot_results.py             # Visualization script
 ├── results/
-│   └── {dataset}/             # Results organized by dataset
+│   └── {dataset}/{architecture}/  # Results organized by dataset and architecture
 │       ├── collapse_results.npy
 │       ├── guillotine_results.npy
 │       ├── curvature_results.npy
+│       ├── orbit_visualization.npy
 │       ├── fig1_collapse_instability.png
-│       └── fig2_geometric_mechanisms.png
+│       ├── fig2_geometric_mechanisms.png
+│       └── fig3_orbit_visualization.png
 └── logs/                       # Timestamped experiment logs
 ```
 
@@ -33,12 +35,12 @@ projection-head-geometry/
 
 ### Running Experiments
 
-Run all experiments on CIFAR-10 (default):
+Run all experiments on CIFAR-10 with ResNet-18 (default):
 ```bash
 uv run experiments.py
 ```
 
-For CIFAR-100:
+For CIFAR-100, Resnet-18:
 ```bash
 uv run experiments.py --dataset cifar100
 ```
@@ -47,6 +49,7 @@ Custom training configuration:
 ```bash
 uv run experiments.py \
   --dataset cifar10 \
+  -- architecture vit_tiny \
   --num_epochs_collapse 20 \
   --num_epochs_guillotine 50 \
   --batch_size 512
@@ -56,7 +59,7 @@ uv run experiments.py \
 
 After running experiments, generate final figures:
 ```bash
-uv run plot_results.py --dataset cifar10
+uv run plot_results.py --dataset cifar10 --architecture resnet18
 ```
 
 ## Experiments
@@ -94,6 +97,21 @@ Compares curvature between backbone and projection head over multiple random see
 **Output**:
 - `curvature_results.npy`: Curvature statistics with confidence intervals
 - Right panel of `fig2_geometric_mechanisms.png`
+
+### Experiment 2c: Orbit Visualization
+
+Visualization of augmentation orbit collapse via metric singularity. Samples images from multiple classes and applies continuous rotation transformations, collecting representations from both backbone and projection head. Computes high-dimensional geometric metrics:
+
+- **Mean orbit spread**: Variance of augmentation-induced representations
+- **Intra-orbit distance (D_intra)**: Average pairwise distance within augmentation orbits
+- **Inter-class distance (D_inter)**: Average distance between class centroids
+- **Class/orbit ratio**: Signal-to-noise ratio measuring semantic separation relative to augmentation variance
+
+Provides direct empirical validation of metric singularity theory by quantifying how the projection head collapses augmentation manifolds while preserving semantic structure.
+
+**Output**:
+- `orbit_visualization.npy`: High-dimensional orbit data and geometric metrics
+- `fig3_orbit_visualization.png`: PCA projection showing orbit collapse with master metrics table printed to console
 
 ## Configuration
 
