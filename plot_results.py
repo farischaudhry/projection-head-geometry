@@ -80,27 +80,32 @@ def plot_collapse_instability(results_dir, dataset, architecture):
             epochs = range(len(results[activation]['mean']))
             mean = np.array(results[activation]['mean'])
             std = np.array(results[activation]['std'])
-            max_y_val = max(max_y_val, np.max(mean + std))
-            plt.plot(epochs, results[activation]['mean'], 
+            
+            initial_mean = mean[0] if mean[0] > 1e-8 else 1.0  # Avoid division by zero
+            mean_normalized = mean / initial_mean
+            std_normalized = std / initial_mean
+            
+            max_y_val = max(max_y_val, np.max(mean_normalized + std_normalized))
+            plt.plot(epochs, mean_normalized, 
                     label=f'{activation.upper()}', 
                     linestyle=styles.get(activation, '-'),
                     color=colors.get(activation),
                     linewidth=2)
             plt.fill_between(epochs, 
-                           results[activation]['mean'] - results[activation]['std'],
-                           results[activation]['mean'] + results[activation]['std'], 
+                           mean_normalized - std_normalized,
+                           mean_normalized + std_normalized, 
                            alpha=0.2,
                            color=colors.get(activation))
     
     plt.title(f'Collapse Instability ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
     plt.xlabel('Training Epochs')
-    plt.ylabel('Repr. Std. Dev.')
+    plt.ylabel('Norm. Repr. Std. Dev.')
+    plt.yscale('log')  # Use log scale to show relative dynamics
     
     # Force integer x-axis ticks
     ax = plt.gca()
     # ax.set_ylim(0, max_y_val * 1.15) 
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-    ax.yaxis.set_major_locator(plt.MaxNLocator(nbins='auto', prune='upper'))
     
     plt.legend(frameon=True, shadow=True)
     plt.grid(alpha=0.3, linestyle=':')

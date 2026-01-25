@@ -121,8 +121,8 @@ Default experiment settings (see `ExperimentConfig` in `experiments.py`):
 |-----------|---------|-------------|
 | `num_seeds` | 3 | Random seeds for confidence intervals |
 | `batch_size` | 512 | Training batch size |
-| `num_epochs_collapse` | 10 | Epochs for collapse experiment |
-| `num_epochs_guillotine` | 20 | SimCLR pretraining epochs |
+| `num_epochs_collapse` | 20 | Epochs for collapse experiment |
+| `num_epochs_guillotine` | 50 | SimCLR pretraining epochs |
 | `exp2_probe_epochs` | 5 | Probe training epochs |
 | `lr_collapse` | 0.05 | Learning rate for SimSiam |
 | `lr_guillotine` | 1e-3 | Learning rate for SimCLR |
