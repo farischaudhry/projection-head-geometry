@@ -381,7 +381,7 @@ class RotationDataset(Dataset):
 
 
 def run_guillotine_experiment(
-        dataset_name: str, config: ExperimentConfig
+        dataset_name: str, config: ExperimentConfig, architecture: str = 'resnet18'
     ) -> tuple[float, float, float, float, nn.Module, nn.Module]:
     """
     Test information loss across backbone-head boundary.
@@ -391,6 +391,7 @@ def run_guillotine_experiment(
     Args:
         dataset_name: Name of dataset
         config: Experiment configuration
+        architecture: Backbone architecture ('resnet18' or 'vit_tiny')
         
     Returns:
         Tuple of (backbone_accuracy, head_accuracy)
@@ -420,8 +421,8 @@ def run_guillotine_experiment(
     )
     
     # Create models
-    backbone = ResNetBackbone().to(device)
-    head = ProjectionHead(activation='relu', use_bn=True).to(device)
+    backbone = get_backbone(architecture).to(device)
+    head = ProjectionHead(input_dim=backbone.output_dim, activation='relu', use_bn=True).to(device)
     optimizer = optim.Adam(
         list(backbone.parameters()) + list(head.parameters()), 
         lr=config.lr_guillotine
@@ -466,12 +467,12 @@ def run_guillotine_experiment(
     
     # Train probes - both linear and nonlinear
     # Linear probes
-    probe_z_linear = nn.Linear(512, 4).to(device)
+    probe_z_linear = nn.Linear(backbone.output_dim, 4).to(device)
     probe_h_linear = nn.Linear(2048, 4).to(device)
     
     # Nonlinear probes (2-layer MLP)
     probe_z_mlp = nn.Sequential(
-        nn.Linear(512, 256),
+        nn.Linear(backbone.output_dim, 256),
         nn.ReLU(),
         nn.Linear(256, 4)
     ).to(device)
@@ -820,7 +821,7 @@ if __name__ == '__main__':
     backbone_pretrained = None
     head_pretrained = None
     try:
-        acc_z_linear, acc_h_linear, acc_z_mlp, acc_h_mlp, backbone_pretrained, head_pretrained = run_guillotine_experiment(DS, config)
+        acc_z_linear, acc_h_linear, acc_z_mlp, acc_h_mlp, backbone_pretrained, head_pretrained = run_guillotine_experiment(DS, config, ARCH)
         
         # Compute nonlinearity gaps
         gap_z = acc_z_mlp - acc_z_linear  # How much MLP helps on backbone

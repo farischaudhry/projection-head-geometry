@@ -271,7 +271,7 @@ def plot_orbit_visualization(results_dir, dataset, architecture):
     print('='*60)
     print(f"{'Metric':<25} | {'Backbone (z)':<18} | {'Head (h(z))':<18}")
     print('-'*60)
-    print(f"{'Orbit Spread':<25} | {mean_z:.4f} ± {std_z:.4f} | {mean_h:.4f} ± {std_h:.4f}")
+    print(f"{'Orbit Spread':<25} | {mean_z:.8f} ± {std_z:.8f} | {mean_h:.8f} ± {std_h:.8f}")
     print(f"{'Intra-orbit Dist (D_intra)':<25} | {metrics_z['d_intra'][0]:.4f} ± {metrics_z['d_intra'][1]:.4f} | {metrics_h['d_intra'][0]:.4f} ± {metrics_h['d_intra'][1]:.4f}")
     print(f"{'Inter-class Dist (D_inter)':<25} | {metrics_z['d_inter'][0]:.4f} ± {metrics_z['d_inter'][1]:.4f} | {metrics_h['d_inter'][0]:.4f} ± {metrics_h['d_inter'][1]:.4f}")
     print(f"{'Class/Orbit Ratio':<25} | {metrics_z['ratio'][0]:.2f}x ± {metrics_z['ratio'][1]:.2f}x | {metrics_h['ratio'][0]:.2f}x ± {metrics_h['ratio'][1]:.2f}x")
