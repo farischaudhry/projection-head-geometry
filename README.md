@@ -49,7 +49,7 @@ Custom training configuration:
 ```bash
 uv run experiments.py \
   --dataset cifar10 \
-  -- architecture vit_tiny \
+  --architecture vit_tiny \
   --num_epochs_collapse 20 \
   --num_epochs_guillotine 50 \
   --batch_size 512
