@@ -126,3 +126,35 @@ Default experiment settings (see `ExperimentConfig` in `experiments.py`):
 | `exp2_probe_epochs` | 5 | Probe training epochs |
 | `lr_collapse` | 0.05 | Learning rate for SimSiam |
 | `lr_guillotine` | 1e-3 | Learning rate for SimCLR |
+
+## Tests on Pretrained Checkpoints
+
+This project uses the pretrained checkpoints (backbone + projection head) for geometric analysis.
+
+### VICReg
+
+- Download: [VICReg ResNet-50 full checkpoint](https://dl.fbaipublicfiles.com/vicreg/resnet50_fullckpt.pth)  
+- Source: [facebookresearch/vicreg](https://github.com/facebookresearch/vicreg)
+- Place the downloaded file in folder: `pretrained/`
+
+
+### Dino
+
+- Download [Dino ResNet-50 full checkpoint](https://dl.fbaipublicfiles.com/dino/dino_resnet50_pretrain/dino_resnet50_pretrain_full_checkpoint.pth)
+- Download [Dino ViT-S/16](https://dl.fbaipublicfiles.com/dino/dino_deitsmall16_pretrain/dino_deitsmall16_pretrain_full_checkpoint.pth)
+- Source: [facebookresearch/dino](https://github.com/facebookresearch/dino)
+- Place the downloaded files in folder: `pretrained/`
+
+
+### Barlow Twins
+
+- Download [Barlow Twins ResNet-50 full checkpoint](https://dl.fbaipublicfiles.com/barlowtwins/ljng/checkpoint.pth)
+- Source: [facebookresearch/barlowtwins](https://github.com/facebookresearch/barlowtwins)
+- Place the downloaded files in folder: `pretrained/`
+
+
+<!-- ### SimCLR
+
+- Download [SimCLR]
+- Source: [google-research/simclr](https://github.com/google-research/simclr)
+- Place the downloaded files in folder: `pretrained/` -->
