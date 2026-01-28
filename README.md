@@ -1,6 +1,6 @@
 # The Geometry of Projection Heads: Conditioning, Invariance, and Collapse
 
-This repository contains experimental validation for geometric analysis of projection heads in self-supervised learning frameworks (SimCLR, SimSiam).
+This repository contains experimental validation for geometric analysis of projection heads in self-supervised learning frameworks (SimCLR, SimSiam, VICReg, Barlow Twins, DINO).
 
 ## Installation
 
@@ -28,6 +28,8 @@ projection-head-geometry/
 │       ├── fig1_collapse_instability.png
 │       ├── fig2_geometric_mechanisms.png
 │       └── fig3_orbit_visualization.png
+├── pretrained.ipynb            # Script for geometric analysis of pretrained models
+├── pretrained/                 # Folder for pretrained model checkpoints
 └── logs/                       # Timestamped experiment logs
 ```
 
@@ -45,7 +47,7 @@ For CIFAR-100, Resnet-18:
 uv run experiments.py --dataset cifar100
 ```
 
-Custom training configuration:
+Custom training configuration (CIFAR-10, ViT-T):
 ```bash
 uv run experiments.py \
   --dataset cifar10 \
@@ -57,7 +59,7 @@ uv run experiments.py \
 
 ### Generating Figures
 
-After running experiments, generate final figures:
+After running experiments, generate final figures e.g.,
 ```bash
 uv run plot_results.py --dataset cifar10 --architecture resnet18
 ```
@@ -129,7 +131,8 @@ Default experiment settings (see `ExperimentConfig` in `experiments.py`):
 
 ## Tests on Pretrained Checkpoints
 
-This project uses the pretrained checkpoints (backbone + projection head) for geometric analysis.
+This project uses the pretrained checkpoints (backbone + projection head) for geometric analysis of larger, pretrained checkpoints.
+Below is a list of checkpoints that are released with both the backbone and projection head (note that easy-to-load models on torch.hub have the head discarded).
 
 ### VICReg
 
@@ -158,3 +161,4 @@ This project uses the pretrained checkpoints (backbone + projection head) for ge
 - Download [SimCLR]
 - Source: [google-research/simclr](https://github.com/google-research/simclr)
 - Place the downloaded files in folder: `pretrained/` -->
+
