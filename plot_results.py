@@ -71,10 +71,17 @@ def plot_collapse_instability(results_dir, dataset, architecture):
     
     # Map the new data keys to the original labels and colors
     runs_to_plot = {
-        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),
-        'relu_bn_False_lr_base': ('RELU', '#ff7f0e', '-'),
-        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),
-        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.')
+        # --- Main Architectures ---
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),     
+        'relu_bn_False_lr_base': ('RELU (Base LR)', '#ff7f0e', '-'),
+        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),          
+        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),       
+        # --- ReLU Ablations (BN & Step Size) ---
+        'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
+        'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
+        'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
+        'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'), 
+        'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'), 
     }
 
     max_y_val = 0  
@@ -82,22 +89,35 @@ def plot_collapse_instability(results_dir, dataset, architecture):
         if run_key in results:
             data = results[run_key]
             epochs = range(len(data['mean']))
-            mean = np.array(data['mean'])
-            std = np.array(data['std'])
             
+            # Grab the raw (3, epochs) array
+            raw_vars = np.array(data['raw'])
+            
+            # Calculate mean, min, and max across seeds (axis=0)
+            mean = np.mean(raw_vars, axis=0)
+            min_vals = np.min(raw_vars, axis=0)
+            max_vals = np.max(raw_vars, axis=0)
+            
+            # Get normalization factor
             initial_mean = mean[0] if mean[0] > 1e-8 else 1.0 
-            mean_normalized = mean / initial_mean
-            std_normalized = std / initial_mean
             
-            max_y_val = max(max_y_val, np.max(mean_normalized + std_normalized))
+            # Normalize the mean and the bounds
+            mean_normalized = mean / initial_mean
+            min_normalized = min_vals / initial_mean
+            max_normalized = max_vals / initial_mean
+            
+            max_y_val = max(max_y_val, np.max(max_normalized))
+            
             plt.plot(epochs, mean_normalized, 
                     label=label, 
                     linestyle=style,
                     color=color,
                     linewidth=2.5)
+            
+            # Fill between the absolute min and max of your 3 seeds
             plt.fill_between(epochs, 
-                           mean_normalized - std_normalized,
-                           mean_normalized + std_normalized, 
+                           min_normalized,
+                           max_normalized, 
                            alpha=0.2,
                            color=color)
     
@@ -124,11 +144,18 @@ def plot_relu_gap_variance(results_dir, dataset, architecture):
     
     plt.figure()
     
-    # We only want to plot the base learning rate runs for this figure
     runs_to_plot = {
-        'linear_bn_False_lr_base': ('Linear', '#1f77b4', '--'),
-        'relu_bn_False_lr_base': ('ReLU (No BN)', '#ff7f0e', '-'),
-        'relu_bn_True_lr_base': ('ReLU (+BN)', '#9467bd', ':'),
+        # --- Main Architectures ---
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
+        'relu_bn_False_lr_base': ('RELU (No BN)', '#ff7f0e', '-'), 
+        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),           
+        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
+        # --- ReLU Ablations (BN & Step Size) ---
+        'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
+        'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
+        'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
+        'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'),
+        'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'),  
     }
     
     max_y_val = 0
@@ -136,18 +163,29 @@ def plot_relu_gap_variance(results_dir, dataset, architecture):
         if run_key in results:
             data = results[run_key]
             epochs = range(len(data['mean']))
-            mean = np.array(data['mean'])
-            std = np.array(data['std'])
+            
+            # Grab the raw (3, epochs) array
+            raw_vars = np.array(data['raw'])
+            
+            # Calculate mean, min, and max across seeds
+            mean = np.mean(raw_vars, axis=0)
+            min_vals = np.min(raw_vars, axis=0)
+            max_vals = np.max(raw_vars, axis=0)
             
             initial_mean = mean[0] if mean[0] > 1e-8 else 1.0
-            mean_normalized = mean / initial_mean
-            std_normalized = std / initial_mean
             
-            max_y_val = max(max_y_val, np.max(mean_normalized + std_normalized))
+            # Normalize
+            mean_normalized = mean / initial_mean
+            min_normalized = min_vals / initial_mean
+            max_normalized = max_vals / initial_mean
+            
+            max_y_val = max(max_y_val, np.max(max_normalized))
+            
             plt.plot(epochs, mean_normalized, label=label, 
                      linestyle=style, color=color, linewidth=2.5)
-            plt.fill_between(epochs, mean_normalized - std_normalized,
-                             mean_normalized + std_normalized, alpha=0.2, color=color)
+            
+            # Fill between absolute min and max
+            plt.fill_between(epochs, min_normalized, max_normalized, alpha=0.2, color=color)
     
     plt.title(f'The ReLU Gap: Collapse Instability ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
     plt.xlabel('Training Epochs')
@@ -173,21 +211,37 @@ def plot_residual_gradients(results_dir, dataset, architecture):
     plt.figure()
     
     runs_to_plot = {
-        'gelu_bn_False_lr_base': ('GELU (Escapes)', '#2ca02c', '-'),
-        'relu_bn_False_lr_base': ('ReLU (Trapped)', '#ff7f0e', '--')
+        # --- Main Architectures ---
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
+        'relu_bn_False_lr_base': ('RELU (Trapped)', '#ff7f0e', '--'), 
+        'gelu_bn_False_lr_base': ('GELU (Escapes)', '#2ca02c', '-'),           
+        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
+        # --- ReLU Ablations (BN & Step Size) ---
+        'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
+        'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
+        'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
+        'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'),
+        'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'),  
     }
     
     for run_key, (label, color, style) in runs_to_plot.items():
         if run_key in results:
             data = results[run_key]
             epochs = range(len(data['grad_norms_mean']))
-            grads_mean = np.array(data['grad_norms_mean'])
-            grads_std = np.array(data['grad_norms_std'])
+            
+            # Grab the raw (3, epochs) gradient array
+            raw_grads = np.array(data['grad_norms_raw'])
+            
+            # Calculate mean, min, and max across seeds
+            grads_mean = np.mean(raw_grads, axis=0)
+            grads_min = np.min(raw_grads, axis=0)
+            grads_max = np.max(raw_grads, axis=0)
             
             plt.plot(epochs, grads_mean, label=label, 
                      linestyle=style, color=color, linewidth=2.5)
-            plt.fill_between(epochs, grads_mean - grads_std, grads_mean + grads_std, 
-                             alpha=0.2, color=color)
+            
+            # Fill between absolute min and max
+            plt.fill_between(epochs, grads_min, grads_max, alpha=0.2, color=color)
     
     plt.title(f'Residual Gradient Norms ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
     plt.xlabel('Training Epochs')
@@ -213,25 +267,37 @@ def plot_condition_numbers(results_dir, dataset, architecture):
     plt.figure()
     
     runs_to_plot = {
-        'relu_bn_False_lr_base': ('ReLU (Trapped)', '#ff7f0e', '-'),
-        'relu_bn_True_lr_base': ('ReLU (+BN)', '#9467bd', ':'),
-        'gelu_bn_False_lr_base': ('GELU (No BN)', '#2ca02c', '--')
+        # --- Main Architectures ---
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
+        'relu_bn_False_lr_base': ('RELU (Trapped)', '#ff7f0e', '-'), 
+        'gelu_bn_False_lr_base': ('GELU (No BN)', '#2ca02c', '--'),           
+        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
+        # --- ReLU Ablations (BN & Step Size) ---
+        'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', ':'),      
+        'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
+        'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
+        'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'),
+        'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'),  
     }
     
     for run_key, (label, color, style) in runs_to_plot.items():
         if run_key in results:
             data = results[run_key]
             epochs = range(len(data['cond_nums_mean']))
-            cond_mean = np.array(data['cond_nums_mean'])
-            cond_std = np.array(data['cond_nums_std'])
+            
+            # Grab the raw (3, epochs) condition number array
+            raw_conds = np.array(data['cond_nums_raw'])
+            
+            # Calculate mean, min, and max across seeds
+            cond_mean = np.mean(raw_conds, axis=0)
+            cond_min = np.min(raw_conds, axis=0)
+            cond_max = np.max(raw_conds, axis=0)
             
             plt.plot(epochs, cond_mean, label=label, 
                      linestyle=style, color=color, linewidth=2.5)
             
-            # Since condition numbers can be huge, we clip the lower bound of the fill to 1.0
-            lower_bound = np.clip(cond_mean - cond_std, a_min=1.0, a_max=None)
-            plt.fill_between(epochs, lower_bound, cond_mean + cond_std, 
-                             alpha=0.2, color=color)
+            # Fill between absolute min and max
+            plt.fill_between(epochs, cond_min, cond_max, alpha=0.2, color=color)
     
     plt.title(f'Covariance Condition Number ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
     plt.xlabel('Training Epochs')

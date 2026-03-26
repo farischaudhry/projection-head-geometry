@@ -852,11 +852,12 @@ if __name__ == '__main__':
         ('relu', False, base_lr, 'relu_bn_False_lr_base'),  
         ('gelu', False, base_lr, 'gelu_bn_False_lr_base'),
         ('swish', False, base_lr, 'swish_bn_False_lr_base'),
-        # ReLU with BN is nonlinear 
+        # ReLU ablations
         ('relu', True, base_lr, 'relu_bn_True_lr_base'),   
-        # Testing Discrete Dynamics for ReLU 
         ('relu', False, large_lr, 'relu_bn_False_lr_large'), 
         ('relu', False, small_lr, 'relu_bn_False_lr_small'),
+        ('relu', True, large_lr, 'relu_bn_True_lr_large'), 
+        ('relu', True, small_lr, 'relu_bn_True_lr_small'),
     ]
 
     original_lr_collapse = config.lr_collapse  # Save original learning rate
@@ -875,132 +876,132 @@ if __name__ == '__main__':
     np.save(f'{results_dir}/collapse_results.npy', results_exp1)
     logger.info(f'Saved collapse data to {results_dir}/collapse_results.npy')
 
-    # # Experiment 2a: Guillotine Effect
-    # logger.info('='*60)
-    # logger.info(f'EXPERIMENT 2a: Guillotine Effect ({DS.upper()}, {ARCH})')
-    # logger.info('='*60)
+    # Experiment 2a: Guillotine Effect
+    logger.info('='*60)
+    logger.info(f'EXPERIMENT 2a: Guillotine Effect ({DS.upper()}, {ARCH})')
+    logger.info('='*60)
     
-    # backbone_pretrained = None
-    # head_pretrained = None
-    # try:
-    #     acc_z_linear, acc_h_linear, acc_z_mlp, acc_h_mlp, backbone_pretrained, head_pretrained = run_guillotine_experiment(DS, config, ARCH)
+    backbone_pretrained = None
+    head_pretrained = None
+    try:
+        acc_z_linear, acc_h_linear, acc_z_mlp, acc_h_mlp, backbone_pretrained, head_pretrained = run_guillotine_experiment(DS, config, ARCH)
         
-    #     # Compute nonlinearity gaps
-    #     gap_z = acc_z_mlp - acc_z_linear  # How much MLP helps on backbone
-    #     gap_h = acc_h_mlp - acc_h_linear  # How much MLP helps on head
+        # Compute nonlinearity gaps
+        gap_z = acc_z_mlp - acc_z_linear  # How much MLP helps on backbone
+        gap_h = acc_h_mlp - acc_h_linear  # How much MLP helps on head
         
-    #     # Save results
-    #     np.save(f'{results_dir}/guillotine_results.npy', {
-    #         'backbone_acc_linear': acc_z_linear,
-    #         'head_acc_linear': acc_h_linear,
-    #         'backbone_acc_mlp': acc_z_mlp,
-    #         'head_acc_mlp': acc_h_mlp,
-    #         'gap_backbone': gap_z,
-    #         'gap_head': gap_h,
-    #         'dataset': DS
-    #     })
-    #     logger.info(f'Saved guillotine data to {results_dir}/guillotine_results.npy')
+        # Save results
+        np.save(f'{results_dir}/guillotine_results.npy', {
+            'backbone_acc_linear': acc_z_linear,
+            'head_acc_linear': acc_h_linear,
+            'backbone_acc_mlp': acc_z_mlp,
+            'head_acc_mlp': acc_h_mlp,
+            'gap_backbone': gap_z,
+            'gap_head': gap_h,
+            'dataset': DS
+        })
+        logger.info(f'Saved guillotine data to {results_dir}/guillotine_results.npy')
  
-    #     logger.info(f'Final Results ({DS.upper()}):')
-    #     logger.info(f'  Backbone - Linear Probe: {acc_z_linear:.4f}')
-    #     logger.info(f'  Backbone - MLP Probe:    {acc_z_mlp:.4f} (Gap: +{gap_z:.4f})')
-    #     logger.info(f'  Head - Linear Probe:     {acc_h_linear:.4f}')
-    #     logger.info(f'  Head - MLP Probe:        {acc_h_mlp:.4f} (Gap: +{gap_h:.4f})')
-    #     logger.info(f'  Linear Loss (Guillotine): {acc_z_linear - acc_h_linear:.4f}')
-    #     logger.info(f'  Nonlinearity Gap (Head vs Backbone): {gap_h - gap_z:.4f}') 
-    # except Exception as e:
-    #     logger.info(f'Error in Guillotine experiment: {e}')
-    #     backbone_pretrained = None
-    #     head_pretrained = None
+        logger.info(f'Final Results ({DS.upper()}):')
+        logger.info(f'  Backbone - Linear Probe: {acc_z_linear:.4f}')
+        logger.info(f'  Backbone - MLP Probe:    {acc_z_mlp:.4f} (Gap: +{gap_z:.4f})')
+        logger.info(f'  Head - Linear Probe:     {acc_h_linear:.4f}')
+        logger.info(f'  Head - MLP Probe:        {acc_h_mlp:.4f} (Gap: +{gap_h:.4f})')
+        logger.info(f'  Linear Loss (Guillotine): {acc_z_linear - acc_h_linear:.4f}')
+        logger.info(f'  Nonlinearity Gap (Head vs Backbone): {gap_h - gap_z:.4f}') 
+    except Exception as e:
+        logger.info(f'Error in Guillotine experiment: {e}')
+        backbone_pretrained = None
+        head_pretrained = None
     
-    # # Experiment 2b: Manifold Curvature
-    # if backbone_pretrained is not None and head_pretrained is not None:
-    #     logger.info('='*60)
-    #     logger.info(f'EXPERIMENT 2b: Manifold Curvature ({DS.upper()}, {ARCH})')
-    #     logger.info('='*60)
-    #     logger.info(f'Running with {config.num_seeds} seeds for confidence intervals')
+    # Experiment 2b: Manifold Curvature
+    if backbone_pretrained is not None and head_pretrained is not None:
+        logger.info('='*60)
+        logger.info(f'EXPERIMENT 2b: Manifold Curvature ({DS.upper()}, {ARCH})')
+        logger.info('='*60)
+        logger.info(f'Running with {config.num_seeds} seeds for confidence intervals')
         
-    #     try:
-    #         all_curvs_z = []
-    #         all_curvs_h = []
-    #         all_ratios = []
+        try:
+            all_curvs_z = []
+            all_curvs_h = []
+            all_ratios = []
             
-    #         # Run curvature experiment with multiple random seeds
-    #         for seed_idx in range(config.num_seeds):
-    #             logger.info(f'  Seed {seed_idx + 1}/{config.num_seeds}')
+            # Run curvature experiment with multiple random seeds
+            for seed_idx in range(config.num_seeds):
+                logger.info(f'  Seed {seed_idx + 1}/{config.num_seeds}')
                 
-    #             # Set seed for reproducible sampling
-    #             set_seed(seed_idx)
+                # Set seed for reproducible sampling
+                set_seed(seed_idx)
                 
-    #             curvs_z, curvs_h = run_curvature_experiment(
-    #                 DS, backbone_pretrained, head_pretrained, config, num_samples=200
-    #             )
+                curvs_z, curvs_h = run_curvature_experiment(
+                    DS, backbone_pretrained, head_pretrained, config, num_samples=200
+                )
                 
-    #             mean_curv_z = np.mean(curvs_z)
-    #             mean_curv_h = np.mean(curvs_h)
-    #             ratio = mean_curv_h / (mean_curv_z + 1e-8)
+                mean_curv_z = np.mean(curvs_z)
+                mean_curv_h = np.mean(curvs_h)
+                ratio = mean_curv_h / (mean_curv_z + 1e-8)
                 
-    #             all_curvs_z.append(mean_curv_z)
-    #             all_curvs_h.append(mean_curv_h)
-    #             all_ratios.append(ratio)
+                all_curvs_z.append(mean_curv_z)
+                all_curvs_h.append(mean_curv_h)
+                all_ratios.append(ratio)
                 
-    #             logger.info(f'    Backbone: {mean_curv_z:.6f}, Head: {mean_curv_h:.6f}, Ratio: {ratio:.2f}x')
+                logger.info(f'    Backbone: {mean_curv_z:.6f}, Head: {mean_curv_h:.6f}, Ratio: {ratio:.2f}x')
             
-    #         # Compute overall statistics
-    #         mean_curv_z_overall = np.mean(all_curvs_z)
-    #         std_curv_z_overall = np.std(all_curvs_z)
-    #         mean_curv_h_overall = np.mean(all_curvs_h)
-    #         std_curv_h_overall = np.std(all_curvs_h)
-    #         mean_ratio = np.mean(all_ratios)
-    #         std_ratio = np.std(all_ratios)
+            # Compute overall statistics
+            mean_curv_z_overall = np.mean(all_curvs_z)
+            std_curv_z_overall = np.std(all_curvs_z)
+            mean_curv_h_overall = np.mean(all_curvs_h)
+            std_curv_h_overall = np.std(all_curvs_h)
+            mean_ratio = np.mean(all_ratios)
+            std_ratio = np.std(all_ratios)
             
-    #         logger.info(f'')
-    #         logger.info(f'Final Results (Manifold Curvature - {config.num_seeds} seeds):')
-    #         logger.info(f'  Backbone Curvature: {mean_curv_z_overall:.6f} ± {std_curv_z_overall:.6f}')
-    #         logger.info(f'  Head Curvature:     {mean_curv_h_overall:.6f} ± {std_curv_h_overall:.6f}')
-    #         logger.info(f'  Curvature Ratio:    {mean_ratio:.2f}x ± {std_ratio:.2f}x')
+            logger.info(f'')
+            logger.info(f'Final Results (Manifold Curvature - {config.num_seeds} seeds):')
+            logger.info(f'  Backbone Curvature: {mean_curv_z_overall:.6f} ± {std_curv_z_overall:.6f}')
+            logger.info(f'  Head Curvature:     {mean_curv_h_overall:.6f} ± {std_curv_h_overall:.6f}')
+            logger.info(f'  Curvature Ratio:    {mean_ratio:.2f}x ± {std_ratio:.2f}x')
             
-    #         # Save results
-    #         np.save(f'{results_dir}/curvature_results.npy', {
-    #             'curvatures_z_per_seed': all_curvs_z,
-    #             'curvatures_h_per_seed': all_curvs_h,
-    #             'ratios_per_seed': all_ratios,
-    #             'mean_curv_z': mean_curv_z_overall,
-    #             'std_curv_z': std_curv_z_overall,
-    #             'mean_curv_h': mean_curv_h_overall,
-    #             'std_curv_h': std_curv_h_overall,
-    #             'mean_ratio': mean_ratio,
-    #             'std_ratio': std_ratio,
-    #             'num_seeds': config.num_seeds,
-    #             'dataset': DS
-    #         })
-    #         logger.info(f'Saved curvature data to {results_dir}/curvature_results.npy')
-    #     except Exception as e:
-    #         logger.info(f'Error in Curvature experiment: {e}')
-    # else:
-    #     logger.info('Skipping Experiment 2b: No pretrained models available')
+            # Save results
+            np.save(f'{results_dir}/curvature_results.npy', {
+                'curvatures_z_per_seed': all_curvs_z,
+                'curvatures_h_per_seed': all_curvs_h,
+                'ratios_per_seed': all_ratios,
+                'mean_curv_z': mean_curv_z_overall,
+                'std_curv_z': std_curv_z_overall,
+                'mean_curv_h': mean_curv_h_overall,
+                'std_curv_h': std_curv_h_overall,
+                'mean_ratio': mean_ratio,
+                'std_ratio': std_ratio,
+                'num_seeds': config.num_seeds,
+                'dataset': DS
+            })
+            logger.info(f'Saved curvature data to {results_dir}/curvature_results.npy')
+        except Exception as e:
+            logger.info(f'Error in Curvature experiment: {e}')
+    else:
+        logger.info('Skipping Experiment 2b: No pretrained models available')
     
-    # # Experiment 2c: Orbit Visualization
-    # if backbone_pretrained is not None and head_pretrained is not None:
-    #     logger.info('='*60)
-    #     logger.info(f'EXPERIMENT 2c: Orbit Visualization ({DS.upper()}, {ARCH})')
-    #     logger.info('='*60)
+    # Experiment 2c: Orbit Visualization
+    if backbone_pretrained is not None and head_pretrained is not None:
+        logger.info('='*60)
+        logger.info(f'EXPERIMENT 2c: Orbit Visualization ({DS.upper()}, {ARCH})')
+        logger.info('='*60)
         
-    #     try:
-    #         orbit_data = run_orbit_visualization_experiment(
-    #             DS, backbone_pretrained, head_pretrained, config,
-    #             num_classes=5, images_per_class=3, num_rotations=12
-    #         )
+        try:
+            orbit_data = run_orbit_visualization_experiment(
+                DS, backbone_pretrained, head_pretrained, config,
+                num_classes=5, images_per_class=3, num_rotations=12
+            )
             
-    #         # Save orbit data
-    #         np.save(f'{results_dir}/orbit_visualization.npy', orbit_data)
-    #         logger.info(f'Saved orbit data to {results_dir}/orbit_visualization.npy')
-    #         logger.info(f'Total orbits: {orbit_data["orbit_ids"].max() + 1}')
-    #         logger.info(f'Total points: {len(orbit_data["orbits_z"])}')
-    #     except Exception as e:
-    #         logger.info(f'Error in Orbit Visualization experiment: {e}')
-    # else:
-    #     logger.info('Skipping Experiment 2c: No pretrained models available')
+            # Save orbit data
+            np.save(f'{results_dir}/orbit_visualization.npy', orbit_data)
+            logger.info(f'Saved orbit data to {results_dir}/orbit_visualization.npy')
+            logger.info(f'Total orbits: {orbit_data["orbit_ids"].max() + 1}')
+            logger.info(f'Total points: {len(orbit_data["orbits_z"])}')
+        except Exception as e:
+            logger.info(f'Error in Orbit Visualization experiment: {e}')
+    else:
+        logger.info('Skipping Experiment 2c: No pretrained models available')
     
     # Final summary
     total_time = time.time() - start_time
