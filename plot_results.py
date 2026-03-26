@@ -63,48 +63,50 @@ ARCHITECTURE_TO_TITLE = {
 
 
 def plot_collapse_instability(results_dir, dataset, architecture):
-    """Plot Experiment 1: Collapse Instability."""
-    # Load results
+    """Plot Experiment 1: Main Text Figure (Linear, ReLU, GELU, Swish)."""
     single_plot_style()
     results = np.load(f'{results_dir}/collapse_results.npy', allow_pickle=True).item()
     
     plt.figure()
     
-    colors = {'linear': '#1f77b4', 'relu': '#ff7f0e', 'gelu': '#2ca02c', 'swish': '#d62728'}
-    styles = {'linear': '--', 'relu': '-', 'gelu': ':', 'swish': '-.'}
-    activations = ['linear', 'relu', 'gelu', 'swish']
+    # Map the new data keys to the original labels and colors
+    runs_to_plot = {
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),
+        'relu_bn_False_lr_base': ('RELU', '#ff7f0e', '-'),
+        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),
+        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.')
+    }
 
-    max_y_val = 0  # For setting y-axis limit in plot
-    for activation in activations:
-        if activation in results:
-            epochs = range(len(results[activation]['mean']))
-            mean = np.array(results[activation]['mean'])
-            std = np.array(results[activation]['std'])
+    max_y_val = 0  
+    for run_key, (label, color, style) in runs_to_plot.items():
+        if run_key in results:
+            data = results[run_key]
+            epochs = range(len(data['mean']))
+            mean = np.array(data['mean'])
+            std = np.array(data['std'])
             
-            initial_mean = mean[0] if mean[0] > 1e-8 else 1.0  # Avoid division by zero
+            initial_mean = mean[0] if mean[0] > 1e-8 else 1.0 
             mean_normalized = mean / initial_mean
             std_normalized = std / initial_mean
             
             max_y_val = max(max_y_val, np.max(mean_normalized + std_normalized))
             plt.plot(epochs, mean_normalized, 
-                    label=f'{activation.upper()}', 
-                    linestyle=styles.get(activation, '-'),
-                    color=colors.get(activation),
-                    linewidth=2)
+                    label=label, 
+                    linestyle=style,
+                    color=color,
+                    linewidth=2.5)
             plt.fill_between(epochs, 
                            mean_normalized - std_normalized,
                            mean_normalized + std_normalized, 
                            alpha=0.2,
-                           color=colors.get(activation))
+                           color=color)
     
     plt.title(f'Collapse Instability ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
     plt.xlabel('Training Epochs')
     plt.ylabel('Norm. Repr. Std. Dev.')
-    plt.yscale('log')  # Use log scale to show relative dynamics
+    plt.yscale('log') 
     
-    # Force integer x-axis ticks
     ax = plt.gca()
-    # ax.set_ylim(0, max_y_val * 1.15) 
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     
     plt.legend(frameon=True, shadow=True)
@@ -113,6 +115,138 @@ def plot_collapse_instability(results_dir, dataset, architecture):
     plt.tight_layout()
     plt.savefig(f'{results_dir}/fig1_collapse_instability.png', dpi=300, bbox_inches='tight')
     print(f'Saved: {results_dir}/fig1_collapse_instability.png')
+
+
+def plot_relu_gap_variance(results_dir, dataset, architecture):
+    """Plot the representation variance for the ReLU/BN ablation."""
+    single_plot_style()
+    results = np.load(f'{results_dir}/collapse_results.npy', allow_pickle=True).item()
+    
+    plt.figure()
+    
+    # We only want to plot the base learning rate runs for this figure
+    runs_to_plot = {
+        'linear_bn_False_lr_base': ('Linear', '#1f77b4', '--'),
+        'relu_bn_False_lr_base': ('ReLU (No BN)', '#ff7f0e', '-'),
+        'relu_bn_True_lr_base': ('ReLU (+BN)', '#9467bd', ':'),
+    }
+    
+    max_y_val = 0
+    for run_key, (label, color, style) in runs_to_plot.items():
+        if run_key in results:
+            data = results[run_key]
+            epochs = range(len(data['mean']))
+            mean = np.array(data['mean'])
+            std = np.array(data['std'])
+            
+            initial_mean = mean[0] if mean[0] > 1e-8 else 1.0
+            mean_normalized = mean / initial_mean
+            std_normalized = std / initial_mean
+            
+            max_y_val = max(max_y_val, np.max(mean_normalized + std_normalized))
+            plt.plot(epochs, mean_normalized, label=label, 
+                     linestyle=style, color=color, linewidth=2.5)
+            plt.fill_between(epochs, mean_normalized - std_normalized,
+                             mean_normalized + std_normalized, alpha=0.2, color=color)
+    
+    plt.title(f'The ReLU Gap: Collapse Instability ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
+    plt.xlabel('Training Epochs')
+    plt.ylabel('Norm. Repr. Std. Dev.')
+    plt.yscale('log')
+    
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    
+    plt.legend(frameon=True, shadow=True, loc='upper left')
+    plt.grid(alpha=0.3, linestyle=':')
+    
+    plt.tight_layout()
+    plt.savefig(f'{results_dir}/fig_relu_gap.png', dpi=300, bbox_inches='tight')
+    print(f'Saved: {results_dir}/fig_relu_gap.png')
+
+
+def plot_residual_gradients(results_dir, dataset, architecture):
+    """Plot the gradient norms of the projection head during collapse."""
+    single_plot_style()
+    results = np.load(f'{results_dir}/collapse_results.npy', allow_pickle=True).item()
+    
+    plt.figure()
+    
+    runs_to_plot = {
+        'gelu_bn_False_lr_base': ('GELU (Escapes)', '#2ca02c', '-'),
+        'relu_bn_False_lr_base': ('ReLU (Trapped)', '#ff7f0e', '--')
+    }
+    
+    for run_key, (label, color, style) in runs_to_plot.items():
+        if run_key in results:
+            data = results[run_key]
+            epochs = range(len(data['grad_norms_mean']))
+            grads_mean = np.array(data['grad_norms_mean'])
+            grads_std = np.array(data['grad_norms_std'])
+            
+            plt.plot(epochs, grads_mean, label=label, 
+                     linestyle=style, color=color, linewidth=2.5)
+            plt.fill_between(epochs, grads_mean - grads_std, grads_mean + grads_std, 
+                             alpha=0.2, color=color)
+    
+    plt.title(f'Residual Gradient Norms ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
+    plt.xlabel('Training Epochs')
+    plt.ylabel(r'$||\nabla_h \mathcal{L}||_2$')
+    
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    
+    plt.legend(frameon=True, shadow=True)
+    plt.grid(alpha=0.3, linestyle=':')
+    plt.yscale('log')
+    
+    plt.tight_layout()
+    plt.savefig(f'{results_dir}/fig_gradient_norms.png', dpi=300, bbox_inches='tight')
+    print(f'Saved: {results_dir}/fig_gradient_norms.png')
+
+
+def plot_condition_numbers(results_dir, dataset, architecture):
+    """Plot the condition number of the representation covariance matrix."""
+    single_plot_style()
+    results = np.load(f'{results_dir}/collapse_results.npy', allow_pickle=True).item()
+    
+    plt.figure()
+    
+    runs_to_plot = {
+        'relu_bn_False_lr_base': ('ReLU (Trapped)', '#ff7f0e', '-'),
+        'relu_bn_True_lr_base': ('ReLU (+BN)', '#9467bd', ':'),
+        'gelu_bn_False_lr_base': ('GELU (No BN)', '#2ca02c', '--')
+    }
+    
+    for run_key, (label, color, style) in runs_to_plot.items():
+        if run_key in results:
+            data = results[run_key]
+            epochs = range(len(data['cond_nums_mean']))
+            cond_mean = np.array(data['cond_nums_mean'])
+            cond_std = np.array(data['cond_nums_std'])
+            
+            plt.plot(epochs, cond_mean, label=label, 
+                     linestyle=style, color=color, linewidth=2.5)
+            
+            # Since condition numbers can be huge, we clip the lower bound of the fill to 1.0
+            lower_bound = np.clip(cond_mean - cond_std, a_min=1.0, a_max=None)
+            plt.fill_between(epochs, lower_bound, cond_mean + cond_std, 
+                             alpha=0.2, color=color)
+    
+    plt.title(f'Covariance Condition Number ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
+    plt.xlabel('Training Epochs')
+    plt.ylabel(r'Condition Number $\kappa$')
+    plt.yscale('log')
+    
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    
+    plt.legend(frameon=True, shadow=True)
+    plt.grid(alpha=0.3, linestyle=':')
+    
+    plt.tight_layout()
+    plt.savefig(f'{results_dir}/fig_condition_numbers.png', dpi=300, bbox_inches='tight')
+    print(f'Saved: {results_dir}/fig_condition_numbers.png')
 
 
 def plot_geometric_mechanisms(results_dir, dataset, architecture):
@@ -414,6 +548,9 @@ if __name__ == '__main__':
     if os.path.exists(f'{results_dir}/collapse_results.npy'):
         print('Creating Figure 1: Collapse Instability')
         plot_collapse_instability(results_dir, args.dataset, architecture_title)
+        plot_relu_gap_variance(results_dir, args.dataset, architecture_title)
+        plot_residual_gradients(results_dir, args.dataset, architecture_title)
+        plot_condition_numbers(results_dir, args.dataset, architecture_title)
     else:
         print('Skipping Figure 1: collapse_results.npy not found')
     
