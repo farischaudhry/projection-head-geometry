@@ -22,7 +22,7 @@ def single_plot_style() -> None:
         'ytick.labelsize': 26,      
         'legend.fontsize': 24,      
         'legend.frameon': True,
-        'figure.figsize': (10, 8),  
+        'figure.figsize': (16, 8),  
         'axes.grid': True,
         'grid.alpha': 0.3,
         'lines.linewidth': 2.5,
@@ -73,15 +73,15 @@ def plot_collapse_instability(results_dir, dataset, architecture):
     runs_to_plot = {
         # --- Main Architectures ---
         'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),     
-        'relu_bn_False_lr_base': ('RELU (Base LR)', '#ff7f0e', '-'),
+        'relu_bn_False_lr_base': ('RELU', '#ff7f0e', '-'),
         'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),          
         'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),       
         # --- ReLU Ablations (BN & Step Size) ---
-        'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
-        'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
-        'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
-        'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'), 
-        'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'), 
+        # 'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
+        # 'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
+        # 'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
+        # 'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'), 
+        # 'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'), 
     }
 
     max_y_val = 0  
@@ -129,7 +129,7 @@ def plot_collapse_instability(results_dir, dataset, architecture):
     ax = plt.gca()
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     
-    plt.legend(frameon=True, shadow=True)
+    plt.legend(frameon=True, shadow=True, loc='center left', bbox_to_anchor=(1.02, 0.5))
     plt.grid(alpha=0.3, linestyle=':')
     
     plt.tight_layout()
@@ -146,10 +146,10 @@ def plot_relu_gap_variance(results_dir, dataset, architecture):
     
     runs_to_plot = {
         # --- Main Architectures ---
-        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
-        'relu_bn_False_lr_base': ('RELU (No BN)', '#ff7f0e', '-'), 
-        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),           
-        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
+        # 'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
+        'relu_bn_False_lr_base': ('RELU', '#ff7f0e', '-'), 
+        # 'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),           
+        # 'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
         # --- ReLU Ablations (BN & Step Size) ---
         'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
         'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
@@ -195,12 +195,12 @@ def plot_relu_gap_variance(results_dir, dataset, architecture):
     ax = plt.gca()
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     
-    plt.legend(frameon=True, shadow=True, loc='upper left')
+    plt.legend(frameon=True, shadow=True, loc='center left', bbox_to_anchor=(1.02, 0.5))
     plt.grid(alpha=0.3, linestyle=':')
     
     plt.tight_layout()
-    plt.savefig(f'{results_dir}/fig_relu_gap.png', dpi=300, bbox_inches='tight')
-    print(f'Saved: {results_dir}/fig_relu_gap.png')
+    plt.savefig(f'{results_dir}/fig1_relu_gap.png', dpi=300, bbox_inches='tight')
+    print(f'Saved: {results_dir}/fig1_relu_gap.png')
 
 
 def plot_residual_gradients(results_dir, dataset, architecture):
@@ -250,13 +250,13 @@ def plot_residual_gradients(results_dir, dataset, architecture):
     ax = plt.gca()
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     
-    plt.legend(frameon=True, shadow=True)
+    plt.legend(frameon=True, shadow=True, loc='center left', bbox_to_anchor=(1.02, 0.5))
     plt.grid(alpha=0.3, linestyle=':')
     plt.yscale('log')
     
     plt.tight_layout()
-    plt.savefig(f'{results_dir}/fig_gradient_norms.png', dpi=300, bbox_inches='tight')
-    print(f'Saved: {results_dir}/fig_gradient_norms.png')
+    plt.savefig(f'{results_dir}/fig1_gradient_norms.png', dpi=300, bbox_inches='tight')
+    print(f'Saved: {results_dir}/fig1_gradient_norms.png')
 
 
 def plot_condition_numbers(results_dir, dataset, architecture):
@@ -269,8 +269,8 @@ def plot_condition_numbers(results_dir, dataset, architecture):
     runs_to_plot = {
         # --- Main Architectures ---
         'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
-        'relu_bn_False_lr_base': ('RELU (Trapped)', '#ff7f0e', '-'), 
-        'gelu_bn_False_lr_base': ('GELU (No BN)', '#2ca02c', '--'),           
+        'relu_bn_False_lr_base': ('RELU', '#ff7f0e', '-'), 
+        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', '--'),           
         'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
         # --- ReLU Ablations (BN & Step Size) ---
         'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', ':'),      
@@ -307,12 +307,12 @@ def plot_condition_numbers(results_dir, dataset, architecture):
     ax = plt.gca()
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
     
-    plt.legend(frameon=True, shadow=True)
+    plt.legend(frameon=True, shadow=True, loc='center left', bbox_to_anchor=(1.02, 0.5))
     plt.grid(alpha=0.3, linestyle=':')
     
     plt.tight_layout()
-    plt.savefig(f'{results_dir}/fig_condition_numbers.png', dpi=300, bbox_inches='tight')
-    print(f'Saved: {results_dir}/fig_condition_numbers.png')
+    plt.savefig(f'{results_dir}/fig1_condition_numbers.png', dpi=300, bbox_inches='tight')
+    print(f'Saved: {results_dir}/fig1_condition_numbers.png')
 
 
 def plot_geometric_mechanisms(results_dir, dataset, architecture):
