@@ -284,10 +284,10 @@ def plot_residual_gradients(results_dir, dataset, architecture):
     for run_key, (label, color, style) in runs_to_plot.items():
         if run_key in results:
             data = results[run_key]
-            epochs = range(len(data['proj_update_norms_mean']))
+            epochs = range(len(data['proj_update_norms_unnormalized_mean']))
             
             # Grab the raw (3, epochs) gradient array
-            raw_grads = np.array(data['proj_update_norms_raw'])
+            raw_grads = np.array(data['proj_update_norms_unnormalized_raw'])
             
             # Calculate mean, min, and max across seeds
             grads_mean = np.mean(raw_grads, axis=0)

@@ -247,6 +247,7 @@ def run_collapse_experiment(
         seeds = list(range(config.num_seeds))
         
     variances_over_time = []
+    proj_update_norms_over_time_unnormalized = []  # not normalized by num params
     proj_update_norms_over_time = []
     backbone_update_norms_over_time = []
     cond_nums_over_time = []
@@ -316,18 +317,23 @@ def run_collapse_experiment(
         #             logger.warning(f'WARNING: Initial variance {initial_var:.6f} may be too high for collapse dynamics')
         
         variance_history = []
+        proj_update_norm_history_unnormalized = []  # not normalized by num params
         proj_update_norm_history = []
         backbone_update_norm_history = []
         cond_num_history = []
         logger.info(f'[{dataset_name}] Exp 1: {activation_type} head (Seed {seed})')
+
+        proj_numel = sum(p.numel() for p in projector.parameters() if p.requires_grad)
+        bb_numel = sum(p.numel() for p in backbone.parameters() if p.requires_grad)
         
         for epoch in tqdm(range(config.num_epochs_collapse), desc=f'{activation_type} (seed {seed})', leave=False): 
             backbone.train()
             projector.train()   
             predictor.train()
             epoch_vars = []
-            epoch_proj_grad_updates = []
-            epoch_backbone_grad_updates = []
+            epoch_proj_grad_updates_unnormalized = []  # gradient norms before normalization
+            epoch_proj_grad_updates = []  # this is normalized by num of params
+            epoch_backbone_grad_updates = []  # this is normalized by num of params
             epoch_cond_nums = []
             
             for (x1, x2), _ in train_loader:
@@ -350,14 +356,16 @@ def run_collapse_experiment(
                     for p in projector.parameters():
                         if p.grad is not None:
                             proj_grad_norm_sq += p.grad.detach().data.norm(2).item() ** 2
-                    epoch_proj_grad_updates.append(proj_grad_norm_sq ** 0.5)
+                    epoch_proj_grad_updates_unnormalized.append(proj_grad_norm_sq ** 0.5)  # raw norm
+                    proj_rms_grad = (proj_grad_norm_sq / proj_numel) ** 0.5
+                    epoch_proj_grad_updates.append(proj_rms_grad)
 
                     backbone_grad_norm_sq = 0.0
                     for p in backbone.parameters():
                         if p.grad is not None:
                             backbone_grad_norm_sq += p.grad.detach().data.norm(2).item() ** 2
-                    backbone_update_norm = (backbone_grad_norm_sq ** 0.5) 
-                    epoch_backbone_grad_updates.append(backbone_update_norm)
+                    backbone_rms_grad = (backbone_grad_norm_sq / bb_numel) ** 0.5 
+                    epoch_backbone_grad_updates.append(backbone_rms_grad)
 
                 optimizer.step()
                 
@@ -379,27 +387,35 @@ def run_collapse_experiment(
             
             variance_history.append(np.mean(epoch_vars))
             proj_update_norm_history.append(np.mean(epoch_proj_grad_updates))
+            proj_update_norm_history_unnormalized.append(np.mean(epoch_proj_grad_updates_unnormalized))
             backbone_update_norm_history.append(np.mean(epoch_backbone_grad_updates))
             cond_num_history.append(np.mean(epoch_cond_nums))
             
         variances_over_time.append(variance_history)
         proj_update_norms_over_time.append(proj_update_norm_history)
+        proj_update_norms_over_time_unnormalized.append(proj_update_norm_history_unnormalized)
         backbone_update_norms_over_time.append(backbone_update_norm_history)
         cond_nums_over_time.append(cond_num_history)
     
     # Return statistics
     variances_np = np.array(variances_over_time)
     proj_update_norms_np = np.array(proj_update_norms_over_time)
+    proj_update_norms_np_unnormalized = np.array(proj_update_norms_over_time_unnormalized)
     backbone_update_norms_np = np.array(backbone_update_norms_over_time)
     cond_nums_np = np.array(cond_nums_over_time)
     return {
         'mean': np.mean(variances_np, axis=0),
         'std': np.std(variances_np, axis=0),
         'raw': variances_np,
-        # Gradient norm stats
+        # Projection head gradient norm stats
         'proj_update_norms_mean': np.mean(proj_update_norms_np, axis=0),
         'proj_update_norms_std': np.std(proj_update_norms_np, axis=0),
         'proj_update_norms_raw': proj_update_norms_np,
+        # Projection head unnormalized gradient norm stats (not normalized by num params)
+        'proj_update_norms_unnormalized_mean': np.mean(proj_update_norms_np_unnormalized, axis=0),
+        'proj_update_norms_unnormalized_std': np.std(proj_update_norms_np_unnormalized, axis=0),
+        'proj_update_norms_unnormalized_raw': proj_update_norms_np_unnormalized,
+        # Backbone gradient norm stats
         'backbone_update_norms_mean': np.mean(backbone_update_norms_np, axis=0),
         'backbone_update_norms_std': np.std(backbone_update_norms_np, axis=0),
         'backbone_update_norms_raw': backbone_update_norms_np,
