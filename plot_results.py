@@ -71,17 +71,23 @@ def plot_collapse_instability(results_dir, dataset, architecture):
     
     # Map the new data keys to the original labels and colors
     runs_to_plot = {
-        # --- Main Architectures ---
-        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),     
-        'relu_bn_False_lr_base': ('RELU', '#ff7f0e', '-'),
-        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),          
-        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),       
-        # --- ReLU Ablations (BN & Step Size) ---
-        # 'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
-        # 'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
-        # 'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
-        # 'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'), 
-        # 'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'), 
+        # Control and alternative nonlinear activation
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),  
+        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', '-'),  
+        # Swish ablations
+        'swish_bn_False_lr_base': ('Swish', '#d62728', '-'),  
+        'swish_bn_True_lr_base': ('Swish + BN', '#e377c2', '-'),
+        'swish_bn_False_lr_large': ('Swish (Large LR)', '#ff9896', '--'),  
+        'swish_bn_True_lr_large': ('Swish + BN (Large LR)', '#f7b6d2', '--'),
+        'swish_bn_False_lr_small': ('Swish (Small LR)', '#8c564b', ':'),
+        'swish_bn_True_lr_small': ('Swish + BN (Small LR)', '#c49c94', ':'),  
+        # ReLU Ablations
+        'relu_bn_False_lr_base': ('ReLU', '#ff7f0e', '-'),
+        'relu_bn_True_lr_base': ('ReLU + BN', '#9467bd', '-'),
+        'relu_bn_False_lr_large': ('ReLU (Large LR)', '#ffbb78', '--'),
+        'relu_bn_True_lr_large': ('ReLU + BN (Large LR)', '#c5b0d5', '--'),  
+        'relu_bn_False_lr_small': ('ReLU (Small LR)', '#bcbd22', ':'), 
+        'relu_bn_True_lr_small': ('ReLU + BN (Small LR)', '#17becf', ':'),  
     }
 
     max_y_val = 0  
@@ -137,6 +143,56 @@ def plot_collapse_instability(results_dir, dataset, architecture):
     print(f'Saved: {results_dir}/fig1_collapse_instability.png')
 
 
+def plot_swish_ablations(results_dir, dataset, architecture):
+    """Plot the representation variance for the Swish learning rate/BN ablation."""
+    single_plot_style()
+    results = np.load(f'{results_dir}/collapse_results.npy', allow_pickle=True).item()
+    
+    plt.figure()
+    
+    runs_to_plot = {
+        'swish_bn_False_lr_base': ('Swish', '#d62728', '-'),  
+        'swish_bn_True_lr_base': ('Swish + BN', '#e377c2', '-'),
+        'swish_bn_False_lr_large': ('Swish (Large LR)', '#ff9896', '--'),  
+        'swish_bn_True_lr_large': ('Swish + BN (Large LR)', '#f7b6d2', '--'),
+        'swish_bn_False_lr_small': ('Swish (Small LR)', '#8c564b', ':'),
+        'swish_bn_True_lr_small': ('Swish + BN (Small LR)', '#c49c94', ':'),  
+    }
+    
+    max_y_val = 0
+    for run_key, (label, color, style) in runs_to_plot.items():
+        if run_key in results:
+            data = results[run_key]
+            epochs = range(len(data['mean']))
+            raw_vars = np.array(data['raw'])
+            mean = np.mean(raw_vars, axis=0)
+            min_vals = np.min(raw_vars, axis=0)
+            max_vals = np.max(raw_vars, axis=0)
+            
+            initial_mean = mean[0] if mean[0] > 1e-8 else 1.0
+            mean_normalized = mean / initial_mean
+            min_normalized = min_vals / initial_mean
+            max_normalized = max_vals / initial_mean
+            
+            plt.plot(epochs, mean_normalized, label=label, 
+                     linestyle=style, color=color, linewidth=2.5)
+            plt.fill_between(epochs, min_normalized, max_normalized, alpha=0.1, color=color)
+    
+    plt.title(f'Intrinsic Curvature: Swish Robustness ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
+    plt.xlabel('Training Epochs')
+    plt.ylabel('Norm. Repr. Std. Dev.')
+    plt.yscale('log')
+    
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    plt.legend(frameon=True, shadow=True, loc='center left', bbox_to_anchor=(1.02, 0.5))
+    plt.grid(alpha=0.3, linestyle=':')
+    
+    plt.tight_layout()
+    plt.savefig(f'{results_dir}/fig1_swish_robustness.png', dpi=300, bbox_inches='tight')
+    print(f'Saved: {results_dir}/fig1_swish_robustness.png')
+
+
 def plot_relu_gap_variance(results_dir, dataset, architecture):
     """Plot the representation variance for the ReLU/BN ablation."""
     single_plot_style()
@@ -145,17 +201,12 @@ def plot_relu_gap_variance(results_dir, dataset, architecture):
     plt.figure()
     
     runs_to_plot = {
-        # --- Main Architectures ---
-        # 'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
-        'relu_bn_False_lr_base': ('RELU', '#ff7f0e', '-'), 
-        # 'gelu_bn_False_lr_base': ('GELU', '#2ca02c', ':'),           
-        # 'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
-        # --- ReLU Ablations (BN & Step Size) ---
-        'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
-        'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
-        'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
-        'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'),
-        'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'),  
+        'relu_bn_False_lr_base': ('ReLU', '#ff7f0e', '-'),
+        'relu_bn_True_lr_base': ('ReLU + BN', '#9467bd', '-'),
+        'relu_bn_False_lr_large': ('ReLU (Large LR)', '#ffbb78', '--'),
+        'relu_bn_True_lr_large': ('ReLU + BN (Large LR)', '#c5b0d5', '--'),  
+        'relu_bn_False_lr_small': ('ReLU (Small LR)', '#bcbd22', ':'), 
+        'relu_bn_True_lr_small': ('ReLU + BN (Small LR)', '#17becf', ':'),  
     }
     
     max_y_val = 0
@@ -211,26 +262,32 @@ def plot_residual_gradients(results_dir, dataset, architecture):
     plt.figure()
     
     runs_to_plot = {
-        # --- Main Architectures ---
-        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
-        'relu_bn_False_lr_base': ('RELU (Trapped)', '#ff7f0e', '--'), 
-        'gelu_bn_False_lr_base': ('GELU (Escapes)', '#2ca02c', '-'),           
-        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
-        # --- ReLU Ablations (BN & Step Size) ---
-        'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', '-'),      
-        'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
-        'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
-        'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'),
-        'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'),  
+        # Control and alternative nonlinear activation
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),  
+        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', '-'),  
+        # Swish ablations
+        'swish_bn_False_lr_base': ('Swish', '#d62728', '-'),  
+        'swish_bn_True_lr_base': ('Swish + BN', '#e377c2', '-'),
+        'swish_bn_False_lr_large': ('Swish (Large LR)', '#ff9896', '--'),  
+        'swish_bn_True_lr_large': ('Swish + BN (Large LR)', '#f7b6d2', '--'),
+        'swish_bn_False_lr_small': ('Swish (Small LR)', '#8c564b', ':'),
+        'swish_bn_True_lr_small': ('Swish + BN (Small LR)', '#c49c94', ':'),  
+        # ReLU Ablations
+        'relu_bn_False_lr_base': ('ReLU', '#ff7f0e', '-'),
+        'relu_bn_True_lr_base': ('ReLU + BN', '#9467bd', '-'),
+        'relu_bn_False_lr_large': ('ReLU (Large LR)', '#ffbb78', '--'),
+        'relu_bn_True_lr_large': ('ReLU + BN (Large LR)', '#c5b0d5', '--'),  
+        'relu_bn_False_lr_small': ('ReLU (Small LR)', '#bcbd22', ':'), 
+        'relu_bn_True_lr_small': ('ReLU + BN (Small LR)', '#17becf', ':'),  
     }
     
     for run_key, (label, color, style) in runs_to_plot.items():
         if run_key in results:
             data = results[run_key]
-            epochs = range(len(data['grad_norms_mean']))
+            epochs = range(len(data['proj_update_norms_mean']))
             
             # Grab the raw (3, epochs) gradient array
-            raw_grads = np.array(data['grad_norms_raw'])
+            raw_grads = np.array(data['proj_update_norms_raw'])
             
             # Calculate mean, min, and max across seeds
             grads_mean = np.mean(raw_grads, axis=0)
@@ -267,17 +324,23 @@ def plot_condition_numbers(results_dir, dataset, architecture):
     plt.figure()
     
     runs_to_plot = {
-        # --- Main Architectures ---
-        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),      
-        'relu_bn_False_lr_base': ('RELU', '#ff7f0e', '-'), 
-        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', '--'),           
-        'swish_bn_False_lr_base': ('SWISH', '#d62728', '-.'),        
-        # --- ReLU Ablations (BN & Step Size) ---
-        'relu_bn_True_lr_base': ('RELU (+BN)', '#9467bd', ':'),      
-        'relu_bn_False_lr_large': ('RELU (Large LR)', '#8c564b', '--'), 
-        'relu_bn_False_lr_small': ('RELU (Small LR)', '#e377c2', ':'),
-        'relu_bn_True_lr_large': ('RELU + BN (Large LR)', '#17becf', '--'),
-        'relu_bn_True_lr_small': ('RELU + BN (Small LR)', '#bcbd22', ':'),  
+        # Control and alternative nonlinear activation
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),  
+        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', '-'),  
+        # Swish ablations
+        'swish_bn_False_lr_base': ('Swish', '#d62728', '-'),  
+        'swish_bn_True_lr_base': ('Swish + BN', '#e377c2', '-'),
+        'swish_bn_False_lr_large': ('Swish (Large LR)', '#ff9896', '--'),  
+        'swish_bn_True_lr_large': ('Swish + BN (Large LR)', '#f7b6d2', '--'),
+        'swish_bn_False_lr_small': ('Swish (Small LR)', '#8c564b', ':'),
+        'swish_bn_True_lr_small': ('Swish + BN (Small LR)', '#c49c94', ':'),  
+        # ReLU Ablations
+        'relu_bn_False_lr_base': ('ReLU', '#ff7f0e', '-'),
+        'relu_bn_True_lr_base': ('ReLU + BN', '#9467bd', '-'),
+        'relu_bn_False_lr_large': ('ReLU (Large LR)', '#ffbb78', '--'),
+        'relu_bn_True_lr_large': ('ReLU + BN (Large LR)', '#c5b0d5', '--'),  
+        'relu_bn_False_lr_small': ('ReLU (Small LR)', '#bcbd22', ':'), 
+        'relu_bn_True_lr_small': ('ReLU + BN (Small LR)', '#17becf', ':'),  
     }
     
     for run_key, (label, color, style) in runs_to_plot.items():
@@ -313,6 +376,71 @@ def plot_condition_numbers(results_dir, dataset, architecture):
     plt.tight_layout()
     plt.savefig(f'{results_dir}/fig1_condition_numbers.png', dpi=300, bbox_inches='tight')
     print(f'Saved: {results_dir}/fig1_condition_numbers.png')
+
+
+def plot_timescale_separation(results_dir, dataset, architecture):
+    """Plot the gradient norms of the head vs. backbone to prove timescale separation."""
+    single_plot_style()
+    results = np.load(f'{results_dir}/collapse_results.npy', allow_pickle=True).item()
+    plt.figure()
+    
+    runs_to_plot = {
+        # Control and alternative nonlinear activation
+        'linear_bn_False_lr_base': ('LINEAR', '#1f77b4', '--'),  
+        'gelu_bn_False_lr_base': ('GELU', '#2ca02c', '-'),  
+        # Swish ablations
+        'swish_bn_False_lr_base': ('Swish', '#d62728', '-'),  
+        'swish_bn_True_lr_base': ('Swish + BN', '#e377c2', '-'),
+        'swish_bn_False_lr_large': ('Swish (Large LR)', '#ff9896', '--'),  
+        'swish_bn_True_lr_large': ('Swish + BN (Large LR)', '#f7b6d2', '--'),
+        'swish_bn_False_lr_small': ('Swish (Small LR)', '#8c564b', ':'),
+        'swish_bn_True_lr_small': ('Swish + BN (Small LR)', '#c49c94', ':'),  
+        # ReLU Ablations
+        'relu_bn_False_lr_base': ('ReLU', '#ff7f0e', '-'),
+        'relu_bn_True_lr_base': ('ReLU + BN', '#9467bd', '-'),
+        'relu_bn_False_lr_large': ('ReLU (Large LR)', '#ffbb78', '--'),
+        'relu_bn_True_lr_large': ('ReLU + BN (Large LR)', '#c5b0d5', '--'),  
+        'relu_bn_False_lr_small': ('ReLU (Small LR)', '#bcbd22', ':'), 
+        'relu_bn_True_lr_small': ('ReLU + BN (Small LR)', '#17becf', ':'),  
+    }
+        
+    for run_key, (label, color, _) in runs_to_plot.items():
+        if run_key in results:
+            data = results[run_key]
+            epochs = range(len(data['proj_update_norms_mean']))
+            
+            # Projection Head Gradients 
+            head_mean = data['proj_update_norms_mean']
+            head_min = np.min(data['proj_update_norms_raw'], axis=0)
+            head_max = np.max(data['proj_update_norms_raw'], axis=0)
+            
+            plt.plot(epochs, head_mean, label=f'{label} Projection Head', 
+                     linestyle='-', color=color, linewidth=3)
+            plt.fill_between(epochs, head_min, head_max, alpha=0.2, color=color)
+            
+            # Backbone Gradients 
+            bb_mean = data['backbone_update_norms_mean']
+            bb_min = np.min(data['backbone_update_norms_raw'], axis=0)
+            bb_max = np.max(data['backbone_update_norms_raw'], axis=0)
+            
+            plt.plot(epochs, bb_mean, label=f'{label} Backbone', 
+                     linestyle='--', color=color, linewidth=3)
+            plt.fill_between(epochs, bb_min, bb_max, alpha=0.1, color=color)
+
+    plt.title(f'Empirical Timescale Separation ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
+    plt.xlabel('Training Epochs')
+    plt.ylabel(r'Gradient Norm $||\nabla \mathcal{L}||_2$')
+    
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
+    
+    plt.legend(frameon=True, shadow=True, loc='center left', bbox_to_anchor=(1.02, 0.5))
+    plt.grid(alpha=0.3, linestyle=':')
+    plt.yscale('log')
+    
+    plt.tight_layout()
+    plt.savefig(f'{results_dir}/fig1_timescale_separation.png', dpi=300, bbox_inches='tight')
+    print(f'Saved: {results_dir}/fig1_timescale_separation.png')
 
 
 def plot_geometric_mechanisms(results_dir, dataset, architecture):
@@ -614,9 +742,11 @@ if __name__ == '__main__':
     if os.path.exists(f'{results_dir}/collapse_results.npy'):
         print('Creating Figure 1: Collapse Instability')
         plot_collapse_instability(results_dir, args.dataset, architecture_title)
+        plot_swish_ablations(results_dir, args.dataset, architecture_title)
         plot_relu_gap_variance(results_dir, args.dataset, architecture_title)
         plot_residual_gradients(results_dir, args.dataset, architecture_title)
         plot_condition_numbers(results_dir, args.dataset, architecture_title)
+        plot_timescale_separation(results_dir, args.dataset, architecture_title)
     else:
         print('Skipping Figure 1: collapse_results.npy not found')
     

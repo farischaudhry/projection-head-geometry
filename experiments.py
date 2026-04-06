@@ -247,7 +247,8 @@ def run_collapse_experiment(
         seeds = list(range(config.num_seeds))
         
     variances_over_time = []
-    grad_norms_over_time = []
+    proj_update_norms_over_time = []
+    backbone_update_norms_over_time = []
     cond_nums_over_time = []
     
     # SimSiam-style augmentations
@@ -315,7 +316,8 @@ def run_collapse_experiment(
         #             logger.warning(f'WARNING: Initial variance {initial_var:.6f} may be too high for collapse dynamics')
         
         variance_history = []
-        grad_norm_history = []
+        proj_update_norm_history = []
+        backbone_update_norm_history = []
         cond_num_history = []
         logger.info(f'[{dataset_name}] Exp 1: {activation_type} head (Seed {seed})')
         
@@ -324,7 +326,8 @@ def run_collapse_experiment(
             projector.train()   
             predictor.train()
             epoch_vars = []
-            epoch_grads = []
+            epoch_proj_grad_updates = []
+            epoch_backbone_grad_updates = []
             epoch_cond_nums = []
             
             for (x1, x2), _ in train_loader:
@@ -343,11 +346,18 @@ def run_collapse_experiment(
 
                 # Track residual gradient norm (before optimizer step)
                 with torch.no_grad():
-                    grad_norm_sq = 0.0
+                    proj_grad_norm_sq = 0.0
                     for p in projector.parameters():
                         if p.grad is not None:
-                            grad_norm_sq += p.grad.detach().data.norm(2).item() ** 2
-                    epoch_grads.append(grad_norm_sq ** 0.5)
+                            proj_grad_norm_sq += p.grad.detach().data.norm(2).item() ** 2
+                    epoch_proj_grad_updates.append(proj_grad_norm_sq ** 0.5)
+
+                    backbone_grad_norm_sq = 0.0
+                    for p in backbone.parameters():
+                        if p.grad is not None:
+                            backbone_grad_norm_sq += p.grad.detach().data.norm(2).item() ** 2
+                    backbone_update_norm = (backbone_grad_norm_sq ** 0.5) 
+                    epoch_backbone_grad_updates.append(backbone_update_norm)
 
                 optimizer.step()
                 
@@ -368,25 +378,31 @@ def run_collapse_experiment(
                     epoch_cond_nums.append(condition_num)
             
             variance_history.append(np.mean(epoch_vars))
-            grad_norm_history.append(np.mean(epoch_grads))     
+            proj_update_norm_history.append(np.mean(epoch_proj_grad_updates))
+            backbone_update_norm_history.append(np.mean(epoch_backbone_grad_updates))
             cond_num_history.append(np.mean(epoch_cond_nums))
             
         variances_over_time.append(variance_history)
-        grad_norms_over_time.append(grad_norm_history) 
+        proj_update_norms_over_time.append(proj_update_norm_history)
+        backbone_update_norms_over_time.append(backbone_update_norm_history)
         cond_nums_over_time.append(cond_num_history)
     
     # Return statistics
     variances_np = np.array(variances_over_time)
-    grad_norms_np = np.array(grad_norms_over_time)
+    proj_update_norms_np = np.array(proj_update_norms_over_time)
+    backbone_update_norms_np = np.array(backbone_update_norms_over_time)
     cond_nums_np = np.array(cond_nums_over_time)
     return {
         'mean': np.mean(variances_np, axis=0),
         'std': np.std(variances_np, axis=0),
         'raw': variances_np,
         # Gradient norm stats
-        'grad_norms_mean': np.mean(grad_norms_np, axis=0),
-        'grad_norms_std': np.std(grad_norms_np, axis=0),
-        'grad_norms_raw': grad_norms_np,
+        'proj_update_norms_mean': np.mean(proj_update_norms_np, axis=0),
+        'proj_update_norms_std': np.std(proj_update_norms_np, axis=0),
+        'proj_update_norms_raw': proj_update_norms_np,
+        'backbone_update_norms_mean': np.mean(backbone_update_norms_np, axis=0),
+        'backbone_update_norms_std': np.std(backbone_update_norms_np, axis=0),
+        'backbone_update_norms_raw': backbone_update_norms_np,
         # Condition number stats
         'cond_nums_mean': np.mean(cond_nums_np, axis=0),
         'cond_nums_std': np.std(cond_nums_np, axis=0),
@@ -848,11 +864,19 @@ if __name__ == '__main__':
     large_lr = 0.5  # Large step size to test discrete escape
     small_lr = 0.005 # Small step size to approximate continuous flow
     activations_to_test = [
+        # Pure linear control
         ('linear', False, base_lr, 'linear_bn_False_lr_base'),
-        ('relu', False, base_lr, 'relu_bn_False_lr_base'),  
-        ('gelu', False, base_lr, 'gelu_bn_False_lr_base'),
+        # Swish ablations
         ('swish', False, base_lr, 'swish_bn_False_lr_base'),
+        ('swish', True, base_lr, 'swish_bn_True_lr_base'),  
+        ('swish', False, large_lr, 'swish_bn_False_lr_large'), 
+        ('swish', False, small_lr, 'swish_bn_False_lr_small'),
+        ('swish', True, large_lr, 'swish_bn_True_lr_large'), 
+        ('swish', True, small_lr, 'swish_bn_True_lr_small'),
+        # Another nonlinear activation for diversity
+        ('gelu', False, base_lr, 'gelu_bn_False_lr_base'),
         # ReLU ablations
+        ('relu', False, base_lr, 'relu_bn_False_lr_base'),  
         ('relu', True, base_lr, 'relu_bn_True_lr_base'),   
         ('relu', False, large_lr, 'relu_bn_False_lr_large'), 
         ('relu', False, small_lr, 'relu_bn_False_lr_small'),
