@@ -403,33 +403,43 @@ def plot_timescale_separation(results_dir, dataset, architecture):
         'relu_bn_False_lr_small': ('ReLU (Small LR)', '#bcbd22', ':'), 
         'relu_bn_True_lr_small': ('ReLU + BN (Small LR)', '#17becf', ':'),  
     }
+
+    print(f"\n{'='*20} TIMESCALE RATIOS {'='*20}")
+    print(f"{'Run Configuration':<30} | {'Ratio (Head/BB)':<15}")
+    print('-' * 50)
         
     for run_key, (label, color, _) in runs_to_plot.items():
         if run_key in results:
             data = results[run_key]
-            epochs = range(len(data['proj_update_norms_mean']))
+            epochs = range(len(data['proj_update_rel_mean']))
             
-            # Projection Head Gradients 
-            head_mean = data['proj_update_norms_mean']
-            head_min = np.min(data['proj_update_norms_raw'], axis=0)
-            head_max = np.max(data['proj_update_norms_raw'], axis=0)
+            # Projection Head relative updates
+            head_mean = data['proj_update_rel_mean']
+            head_raw = data['proj_update_rel_raw']
             
             plt.plot(epochs, head_mean, label=f'{label} Projection Head', 
                      linestyle='-', color=color, linewidth=3)
-            plt.fill_between(epochs, head_min, head_max, alpha=0.2, color=color)
+            plt.fill_between(epochs, np.min(head_raw, axis=0), np.max(head_raw, axis=0), 
+                             alpha=0.15, color=color)
             
-            # Backbone Gradients 
-            bb_mean = data['backbone_update_norms_mean']
-            bb_min = np.min(data['backbone_update_norms_raw'], axis=0)
-            bb_max = np.max(data['backbone_update_norms_raw'], axis=0)
-            
+            # Backbone relative updates
+            bb_mean = data['backbone_update_rel_mean']
+            bb_raw = data['backbone_update_rel_raw']
+    
             plt.plot(epochs, bb_mean, label=f'{label} Backbone', 
                      linestyle='--', color=color, linewidth=3)
-            plt.fill_between(epochs, bb_min, bb_max, alpha=0.1, color=color)
+            plt.fill_between(epochs, np.min(bb_raw, axis=0), np.max(bb_raw, axis=0), 
+                             alpha=0.1, color=color)
+            
+            # Ratios
+            head_rel_mean = np.mean(head_mean)
+            bb_rel_mean = np.mean(bb_mean)
+            ratio = head_rel_mean / (bb_rel_mean + 1e-8)
+            print(f'{label:<30} | {ratio:.4f}')
 
     plt.title(f'Empirical Timescale Separation ({dataset.upper()}, {architecture})', fontweight='bold', pad=15)
     plt.xlabel('Training Epochs')
-    plt.ylabel(r'Gradient Norm $||\nabla \mathcal{L}||_2$')
+    plt.ylabel(r'Relative Update $||\eta \nabla w||_2 / ||w||_2$')
     
     ax = plt.gca()
     ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))

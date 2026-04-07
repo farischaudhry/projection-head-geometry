@@ -249,7 +249,9 @@ def run_collapse_experiment(
     variances_over_time = []
     proj_update_norms_over_time_unnormalized = []  # not normalized by num params
     proj_update_norms_over_time = []
+    proj_update_rel_over_time = []  # relative update size (lr * grad_norm / weight_norm)
     backbone_update_norms_over_time = []
+    backbone_update_rel_over_time = []  # relative update size (lr * grad_norm / weight_norm)
     cond_nums_over_time = []
     
     # SimSiam-style augmentations
@@ -319,7 +321,9 @@ def run_collapse_experiment(
         variance_history = []
         proj_update_norm_history_unnormalized = []  # not normalized by num params
         proj_update_norm_history = []
+        proj_update_rel_history = []
         backbone_update_norm_history = []
+        backbone_update_rel_history = []
         cond_num_history = []
         logger.info(f'[{dataset_name}] Exp 1: {activation_type} head (Seed {seed})')
 
@@ -333,7 +337,9 @@ def run_collapse_experiment(
             epoch_vars = []
             epoch_proj_grad_updates_unnormalized = []  # gradient norms before normalization
             epoch_proj_grad_updates = []  # this is normalized by num of params
+            epoch_proj_rel_updates = []  # relative update size (lr * grad_norm / weight_norm)
             epoch_backbone_grad_updates = []  # this is normalized by num of params
+            epoch_backbone_rel_updates = []  # relative update size (lr * grad_norm / weight_norm)
             epoch_cond_nums = []
             
             for (x1, x2), _ in train_loader:
@@ -352,20 +358,36 @@ def run_collapse_experiment(
 
                 # Track residual gradient norm (before optimizer step)
                 with torch.no_grad():
+                    # Projection head
                     proj_grad_norm_sq = 0.0
+                    proj_weight_norm_sq = 0.0
                     for p in projector.parameters():
                         if p.grad is not None:
                             proj_grad_norm_sq += p.grad.detach().data.norm(2).item() ** 2
-                    epoch_proj_grad_updates_unnormalized.append(proj_grad_norm_sq ** 0.5)  # raw norm
-                    proj_rms_grad = (proj_grad_norm_sq / proj_numel) ** 0.5
-                    epoch_proj_grad_updates.append(proj_rms_grad)
+                            proj_weight_norm_sq += p.detach().data.norm(2).item() ** 2
+                    
+                    proj_grad_norm = proj_grad_norm_sq ** 0.5
+                    proj_weight_norm = proj_weight_norm_sq ** 0.5
+                    proj_rel_update = (config.lr_collapse * proj_grad_norm) / (proj_weight_norm + 1e-7)
 
+                    epoch_proj_grad_updates_unnormalized.append(proj_grad_norm)
+                    epoch_proj_grad_updates.append((proj_grad_norm_sq / proj_numel) ** 0.5)  # RMS
+                    epoch_proj_rel_updates.append(proj_rel_update)
+
+                    # Backbone
                     backbone_grad_norm_sq = 0.0
+                    backbone_weight_norm_sq = 0.0
                     for p in backbone.parameters():
                         if p.grad is not None:
                             backbone_grad_norm_sq += p.grad.detach().data.norm(2).item() ** 2
-                    backbone_rms_grad = (backbone_grad_norm_sq / bb_numel) ** 0.5 
-                    epoch_backbone_grad_updates.append(backbone_rms_grad)
+                            backbone_weight_norm_sq += p.detach().data.norm(2).item() ** 2
+                    
+                    backbone_grad_norm = backbone_grad_norm_sq ** 0.5
+                    backbone_weight_norm = backbone_weight_norm_sq ** 0.5
+                    bb_rel_update = (config.lr_collapse * backbone_grad_norm) / (backbone_weight_norm + 1e-7)
+
+                    epoch_backbone_grad_updates.append((backbone_grad_norm_sq / bb_numel) ** 0.5) # RMS
+                    epoch_backbone_rel_updates.append(bb_rel_update)
 
                 optimizer.step()
                 
@@ -388,20 +410,26 @@ def run_collapse_experiment(
             variance_history.append(np.mean(epoch_vars))
             proj_update_norm_history.append(np.mean(epoch_proj_grad_updates))
             proj_update_norm_history_unnormalized.append(np.mean(epoch_proj_grad_updates_unnormalized))
+            proj_update_rel_history.append(np.mean(epoch_proj_rel_updates))
             backbone_update_norm_history.append(np.mean(epoch_backbone_grad_updates))
+            backbone_update_rel_history.append(np.mean(epoch_backbone_rel_updates))
             cond_num_history.append(np.mean(epoch_cond_nums))
             
         variances_over_time.append(variance_history)
         proj_update_norms_over_time.append(proj_update_norm_history)
         proj_update_norms_over_time_unnormalized.append(proj_update_norm_history_unnormalized)
+        proj_update_rel_over_time.append(proj_update_rel_history)
         backbone_update_norms_over_time.append(backbone_update_norm_history)
+        backbone_update_rel_over_time.append(backbone_update_rel_history) 
         cond_nums_over_time.append(cond_num_history)
     
     # Return statistics
     variances_np = np.array(variances_over_time)
     proj_update_norms_np = np.array(proj_update_norms_over_time)
     proj_update_norms_np_unnormalized = np.array(proj_update_norms_over_time_unnormalized)
+    proj_update_rel_np = np.array(proj_update_rel_over_time)
     backbone_update_norms_np = np.array(backbone_update_norms_over_time)
+    backbone_update_rel_np = np.array(backbone_update_rel_over_time)
     cond_nums_np = np.array(cond_nums_over_time)
     return {
         'mean': np.mean(variances_np, axis=0),
@@ -415,10 +443,18 @@ def run_collapse_experiment(
         'proj_update_norms_unnormalized_mean': np.mean(proj_update_norms_np_unnormalized, axis=0),
         'proj_update_norms_unnormalized_std': np.std(proj_update_norms_np_unnormalized, axis=0),
         'proj_update_norms_unnormalized_raw': proj_update_norms_np_unnormalized,
+        # Projection head relative update size stats
+        'proj_update_rel_mean': np.mean(proj_update_rel_np, axis=0),
+        'proj_update_rel_std': np.std(proj_update_rel_np, axis=0),
+        'proj_update_rel_raw': proj_update_rel_np,
         # Backbone gradient norm stats
         'backbone_update_norms_mean': np.mean(backbone_update_norms_np, axis=0),
         'backbone_update_norms_std': np.std(backbone_update_norms_np, axis=0),
         'backbone_update_norms_raw': backbone_update_norms_np,
+        # Backbone relative update size stats
+        'backbone_update_rel_mean': np.mean(backbone_update_rel_np, axis=0),
+        'backbone_update_rel_std': np.std(backbone_update_rel_np, axis=0),
+        'backbone_update_rel_raw': backbone_update_rel_np,
         # Condition number stats
         'cond_nums_mean': np.mean(cond_nums_np, axis=0),
         'cond_nums_std': np.std(cond_nums_np, axis=0),
