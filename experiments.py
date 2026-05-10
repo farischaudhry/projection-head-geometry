@@ -52,7 +52,7 @@ class ExperimentConfig:
     dataset: Literal['cifar10', 'cifar100'] = 'cifar10'
     batch_size: int = 512
     num_epochs_collapse: int = 50
-    num_epochs_guillotine: int = 20
+    num_epochs_guillotine: int = 50
     lr_collapse: float = 0.05
     lr_guillotine: float = 1e-3
     momentum: float = 0.9

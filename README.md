@@ -28,6 +28,11 @@ projection-head-geometry/
 │       ├── curvature_results.npy
 │       ├── orbit_visualization.npy
 │       ├── fig1_collapse_instability.png
+│       ├── fig1_swish_robustness.png
+│       ├── fig1_relu_gap.png
+│       ├── fig1_gradient_norms.png
+│       ├── fig1_condition_numbers.png
+│       ├── fig1_timescale_separation.png
 │       ├── fig2_geometric_mechanisms.png
 │       └── fig3_orbit_visualization.png
 ├── pretrained.ipynb            # Script for geometric analysis of pretrained models
@@ -44,7 +49,7 @@ Run all experiments on CIFAR-10 with ResNet-18 (default):
 uv run experiments.py
 ```
 
-For CIFAR-100, Resnet-18:
+For CIFAR-100, ResNet-18:
 ```bash
 uv run experiments.py --dataset cifar100
 ```
@@ -70,13 +75,18 @@ uv run plot_results.py --dataset cifar10 --architecture resnet18
 
 ### Experiment 1: Collapse Instability
 
-Curvature destabilizes collapse dynamics. Tests four projection head activation functions (Linear, ReLU, GELU, Swish) initialized near a collapsed state (i.e., low representation variance). Tracks representation standard deviation over training epochs to measure escape dynamics.
+Curvature destabilizes collapse dynamics. Tests projection head activation functions (Linear, ReLU, GELU, Swish), plus batch-norm and learning-rate ablations, initialized near a collapsed state (i.e., low representation variance). Tracks representation standard deviation, gradient norms, and covariance conditioning over training epochs to measure escape dynamics and timescale separation.
 
 Linear heads remain collapsed while nonlinear activations (GELU, Swish) escape due to induced manifold curvature.
 
 **Output**: 
-- `collapse_results.npy`: Variance trajectories per activation type
-- `fig1_collapse_instability.png`: Multi-seed comparison plot
+- `collapse_results.npy`: Variance, gradient, and conditioning trajectories per run
+- `fig1_collapse_instability.png`: Main multi-seed comparison plot
+- `fig1_swish_robustness.png`: Swish BN/LR ablations
+- `fig1_relu_gap.png`: ReLU BN/LR ablations
+- `fig1_gradient_norms.png`: Projection head residual gradient norms
+- `fig1_condition_numbers.png`: Covariance condition numbers
+- `fig1_timescale_separation.png`: Head vs backbone relative updates
 
 ### Experiment 2a: Guillotine Effect
 
@@ -84,7 +94,7 @@ Metric singularity via geometric transformation. Pretrains a SimCLR model, then 
 1. **Linear probes** - measure linearly accessible information
 2. **MLP probes** - measure total recoverable information
 
-Tests both backbone representations $z$ and projection head outputs $h(z)$. Genearlly, a large performance gap is noted between head and backbone (in both linear and MLP probes).
+Tests both backbone representations $z$ and projection head outputs $h(z)$. Generally, a large performance gap is noted between head and backbone (in both linear and MLP probes).
 
 **Output**:
 - `guillotine_results.npy`: Probe accuracies and gaps
@@ -125,11 +135,51 @@ Default experiment settings (see `ExperimentConfig` in `experiments.py`):
 |-----------|---------|-------------|
 | `num_seeds` | 3 | Random seeds for confidence intervals |
 | `batch_size` | 512 | Training batch size |
-| `num_epochs_collapse` | 20 | Epochs for collapse experiment |
+| `num_epochs_collapse` | 50 | Epochs for collapse experiment |
 | `num_epochs_guillotine` | 50 | SimCLR pretraining epochs |
 | `exp2_probe_epochs` | 5 | Probe training epochs |
 | `lr_collapse` | 0.05 | Learning rate for SimSiam |
 | `lr_guillotine` | 1e-3 | Learning rate for SimCLR |
+
+## Additional Experiments
+
+### Head Depth Ablation
+
+Runs a SimCLR pretraining stage with a flexible projection head depth, then evaluates rotation probes, curvature, and orbit geometry.
+
+```bash
+uv run head_depth_ablations.py --task geometry --num_layers 2
+```
+
+To generate orbit visualizations and metric tables for all depths:
+
+```bash
+uv run head_depth_ablations.py --task plot
+```
+
+**Output**:
+- `geometric_ablation_depth_{N}.npz`: Probe accuracy, curvature, and orbit data
+- `fig3_orbit_visualization_depth_{N}.png`: Orbit plots per depth
+
+### Hessian Tracker
+
+Tracks the minimum Hessian eigenvalue (via HVPs), representation variance, and covariance condition number during SimSiam-style training.
+
+```bash
+uv run hessian_tracker.py --mode track --init collapsed --activation swish --epochs 100 --plot_after_track
+```
+
+To generate the composite plot from saved runs:
+
+```bash
+uv run hessian_tracker.py --mode plot --plot_type composite --dir <dir_with_raw_data>
+```
+
+**Output**:
+- `raw_data_{init}_{activation}.npz`: Tracked metrics over epochs
+- `hessian_sig_{init}_{activation}.png`: Min-eigenvalue and variance plot
+- `cond_num_{init}_{activation}.png`: Condition-number plot
+- `hessian_tracker.png`: Composite figure (plot mode)
 
 ## Tests on Pretrained Checkpoints
 
